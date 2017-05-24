@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+
+	<head>
+		<meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+
+	<title>Who updates SharedUserData?</title>
+
+
+<meta name="twitter:card" content="summary" />
+<meta name="twitter:site" content="@" />
+<meta name="twitter:title" content="Who updates SharedUserData?" />
+<meta name="twitter:description" content="As you might know, the SharedUserData structure is present in all Windows NT+ versions, and is always at the same static offset 0x7FFE0000.Its purpose is to provide a bunch of interesting data to a...">
+
+<meta name="description" content="As you might know, the SharedUserData structure is present in all Windows NT+ versions, and is always at the same static offset 0x7FFE0000.Its purpose is to ...">
+
+
+	<meta name="google-site-verification" content="epFgX0s_0RM3CdjwFcsewfXzPov2g8s9ZBOLyaIUH-o">
+
+
+<link rel="icon" href="/assets/favicon.png">
+<link rel="apple-touch-icon" href="/assets/touch-icon.png">
+<link href="https://fonts.googleapis.com/css?family=Karla" rel="stylesheet">
+<link rel="stylesheet" href="/assets/core.css">
+<link rel="canonical" href="/post/who-updates-shareduserdata">
+<link rel="alternate" type="application/atom+xml" title="qmemcpy - random bits of reverse engineering" href="/feed.xml" />
+
+
+
+   
+	</head>
+
+	<body>
+
+		<aside class="logo">
+
+	
+	
+
+	<a href="/">
+		<img src="/assets/command_line.png" class="gravatar">
+	</a>
+
+</aside>
+
+
+		<main>
+			<article>
+
+	<div class="center">
+		<h1>Who updates SharedUserData?</h1>
+		<time>May 24, 2017</time>
+	</div>
+
+	<div class="divider"></div>
+
+	<p>As you <a href="http://uninformed.org/index.cgi?v=2&amp;a=2&amp;p=15">might know</a>, the SharedUserData structure is present in all Windows NT+ versions, and is always at the same static offset 0x7FFE0000.
+Its purpose is to provide a bunch of interesting data to all the processes, without forcing them to do an expensive syscall.</p>
+
+<p>You can find the offset in WinDbg like so:</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>0:000&gt; dd SharedUserData L1
+7ffe0000  00000000
+</code></pre>
+</div>
+
+<p>It is the previously mentioned static offset, <code class="highlighter-rouge">0x7ffe0000</code>.</p>
+
+<p>Now, you can browse the structure in friendly format with <code class="highlighter-rouge">dt</code>, using <code class="highlighter-rouge">_KUSER_SHARED_DATA</code> as the type:</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>0:000&gt; dt _KUSER_SHARED_DATA 7ffe0000
+ntdll!_KUSER_SHARED_DATA
+   +0x000 TickCountLowDeprecated : 0
+   +0x004 TickCountMultiplier : 0xfa00000
+   +0x008 InterruptTime    : _KSYSTEM_TIME
+   +0x014 SystemTime       : _KSYSTEM_TIME
+   +0x020 TimeZoneBias     : _KSYSTEM_TIME
+   ...
+   +0x3e0 XState           : _XSTATE_CONFIGURATION
+</code></pre>
+</div>
+
+<p><em>(fields skipped for brevity)</em></p>
+
+<p>As you see, there are some fields, such as <code class="highlighter-rouge">SystemTime</code>, which are constantly updated:</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>0:000&gt; dt _KUSER_SHARED_DATA 7ffe0000 SystemTime
+ntdll!_KUSER_SHARED_DATA
+   +0x014 SystemTime : _KSYSTEM_TIME
+
+0:000&gt; dx -r1 (*((ntdll!_KSYSTEM_TIME *)0x7ffe0014))
+(*((ntdll!_KSYSTEM_TIME *)0x7ffe0014))                 [Type: _KSYSTEM_TIME]
+    [+0x000] LowPart          : 0xba4a1f7b [Type: unsigned long] 			; &lt;------ time
+    ...
+
+0:000&gt; dx -r1 (*((ntdll!_KSYSTEM_TIME *)0x7ffe0014))
+(*((ntdll!_KSYSTEM_TIME *)0x7ffe0014))                 [Type: _KSYSTEM_TIME]
+    [+0x000] LowPart          : 0xbb9757c7 [Type: unsigned long]			; &lt;------ time
+    ...
+</code></pre>
+</div>
+
+<p>Now, to see who updates it, we put a hardware breakpoint on write on the <code class="highlighter-rouge">LowPart</code> field:</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>0:000&gt; ba w4 0x7ffe0014
+0:000&gt; g
+*BUSY* Debuggee is running...
+</code></pre>
+</div>
+
+<p>However, it never breaks. If we break manually and check the value, it has been updated:</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>0:001&gt; dx -r1 (*((ntdll!_KSYSTEM_TIME *)0x7ffe0014))
+(*((ntdll!_KSYSTEM_TIME *)0x7ffe0014))                 [Type: _KSYSTEM_TIME]
+    [+0x000] LowPart          : 0x801a52c [Type: unsigned long]
+    [+0x004] High1Time        : 30594240 [Type: long]
+    [+0x008] High2Time        : 30594240 [Type: long]
+</code></pre>
+</div>
+
+<p>Maybe it’s the kernel who updates it, and we just can’t see it from usermode. Let’s quickly switch to kernel debugging:</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>0: kd&gt; !process 0 1 notepad.exe
+PROCESS 8d379550  SessionId: 1  Cid: 0640    Peb: 7ffdf000  ParentCid: 0a1c
+        ^^^^^^^^
+    ...
+
+0: kd&gt; .process /p /r /i 8d379550
+You need to continue execution (press 'g' &lt;enter&gt;) for the context
+to be switched. When the debugger breaks in again, you will be in
+the new process context.
+0: kd&gt; g
+Break instruction exception - code 80000003 (first chance)
+nt!RtlpBreakWithStatusInstruction:
+82a8c110 cc              int     3
+0: kd&gt; !process -1 0
+PROCESS 8d379550  SessionId: 1  Cid: 0640    Peb: 7ffdf000  ParentCid: 0a1c
+    DirBase: 3fdd1680  ObjectTable: 8b5b9cb8  HandleCount:  74.
+    Image: notepad.exe
+</code></pre>
+</div>
+
+<p>We are in the process’ context. Let’s make sure that SharedUserData is still at the same offset:</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>0: kd&gt; dd SharedUserData L1
+7ffe0000  00000000
+0: kd&gt; dt _KUSER_SHARED_DATA 7ffe0000
+nt!_KUSER_SHARED_DATA
+   +0x000 TickCountLowDeprecated : 0
+   +0x004 TickCountMultiplier : 0xf99a027
+   +0x008 InterruptTime    : _KSYSTEM_TIME
+   +0x014 SystemTime       : _KSYSTEM_TIME
+   ...
+   +0x3e0 XState           : _XSTATE_CONFIGURATION
+</code></pre>
+</div>
+
+<p>It effectively is. Let’s put a breakpoint and see what happens:</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>0: kd&gt; dx -r1 ((ntkrpamp!_KSYSTEM_TIME *)0x7ffe0014)
+((ntkrpamp!_KSYSTEM_TIME *)0x7ffe0014)                 : 0x7ffe0014 [Type: _KSYSTEM_TIME *]
+    [+0x000] LowPart          : 0x2ffad577 [Type: unsigned long]
+    [+0x004] High1Time        : 30594240 [Type: long]
+    [+0x008] High2Time        : 30594240 [Type: long]
+0: kd&gt; ba w4 0x7ffe0014
+0: kd&gt; g
+</code></pre>
+</div>
+
+<p>Still nothing, it won’t break, even though the value is continuously updated. What’s up?</p>
+
+<p>What happens is that <strong>the value at that address is being updated from another virtual address mapping</strong>. That effectively means that the SharedUserData structure
+is mapped (at least) twice: once at the static offset, and (at least) once for whoever updates it. That means there are two or more virtual addresses
+that are mapped to the same physical address, so when you update the value of one, the other one updates as well. And the hardware breakpoints never break because
+<a href="https://blogs.msdn.microsoft.com/oldnewthing/20080509-00/?p=22383">data breakpoints are based on the linear address, not the physical address</a>.</p>
+
+<p>So what can we do to find out who is updating <code class="highlighter-rouge">SystemTime</code>? We’ll translate the virtual address to a physical one, and then find out all the virtual addresses
+mapped to it. Then we can set a breakpoint on each mapping and see what happens.</p>
+
+<h1 id="translating-a-virtual-address-to-a-physical-one">Translating a virtual address to a physical one</h1>
+
+<p>We’ll refer to the <a href="https://msdn.microsoft.com/en-us/windows/hardware/ff539310.aspx">MSDN documentation</a>, and do it the <code class="highlighter-rouge">!pte</code> way.</p>
+
+<p>First, we have to determine the <em>byte index</em> of the address, i.e. the lowest 12 bits. For my case, the address is <code class="highlighter-rouge">0x7FFE0014</code> (<code class="highlighter-rouge">SharedUserData.SystemTime</code>), and the
+lowest 12 bits are <code class="highlighter-rouge">0x14</code>:</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>0111 1111 1111 1110 0000 0000 0001 0100 -&gt; 0x14
+                         ^^^^ ^^^^ ^^^^
+</code></pre>
+</div>
+
+<p>Next, we’ll find the page frame number (PFN) for that address with <code class="highlighter-rouge">!pte</code>:</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>1: kd&gt; !pte 0x7FFE0014
+                    VA 7ffe0014
+PDE at C0601FF8            PTE at C03FFF00
+contains 000000000D946867  contains 80000000001DC005
+pfn d946      ---DA--UWEV  pfn 1dc       -------UR-V
+                --------------&gt;^^^&lt;-----------------
+</code></pre>
+</div>
+
+<p>In this case, the PFN is <code class="highlighter-rouge">0x1DC</code>. Shift it left 12 bits, and you’ll get the physical address of the beginning of that page:</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>&gt;&gt;&gt; hex(0x1DC &lt;&lt; 12)
+'0x1dc000'
+</code></pre>
+</div>
+
+<p>Now add the <em>byte index</em> (previously found), and you’ll have the physical address:</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>&gt;&gt;&gt; hex(0x1DC000 + 0x14)
+'0x1dc014'
+</code></pre>
+</div>
+
+<p>Let’s confirm that the physical address points to the same data as the virtual one. The <code class="highlighter-rouge">dd</code> command accepts <em>virtual</em> addresses,
+while <code class="highlighter-rouge">!dd</code> accepts <em>physical</em> ones:</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>1: kd&gt; dd 7ffe0000 L4
+7ffe0000  00000000 0f99a027 9dc50308 00000001
+1: kd&gt; !dd 1dc000 L4
+#  1dc000 00000000 0f99a027 9dc50308 00000001
+</code></pre>
+</div>
+
+<p>They seem to point to the same place!</p>
+
+<h1 id="finding-out-the-mappings">Finding out the mappings</h1>
+
+<p>Now, we have the physical address. To find out which virtual addresses are mapped to it, we’ll use <code class="highlighter-rouge">!ptov</code>:
+a full map of all the <strong>p</strong>hysical-<strong>to</strong>-<strong>v</strong>irtual address for the current process. The output is very long,
+so I’ll grep out the non-interesting parts:</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>1: kd&gt; !process -1 0
+PROCESS 8d379550  SessionId: 1  Cid: 0640    Peb: 7ffdf000  ParentCid: 0a1c
+    DirBase: 3fdd1680  ObjectTable: 8b5b9cb8  HandleCount:  73.
+    Image: notepad.exe
+
+1: kd&gt; !ptov 3fdd1680  
+X86PtoV: pagedir 3fdd1680, PAE enabled.
+...
+1dc000 7ffe0000
+1dc000 ffdf0000
+...
+</code></pre>
+</div>
+
+<p>Since the address starts with <code class="highlighter-rouge">0x1DC0</code>, I just searched for all the physical addresses that start with it. Remember that the physical address
+(left column) corresponds to the start of the page, like the virtual address (right column), so you need to add the offset for the structure
+member in question, which is <code class="highlighter-rouge">SystemTime</code> -&gt; <code class="highlighter-rouge">SharedUserData + 0x14</code>:</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>0: kd&gt; ba w4 ffdf0000+14
+0: kd&gt; g
+Breakpoint 0 hit
+nt!KeUpdateSystemTime+0x9e:
+82a8b9e6 89351800dfff    mov     dword ptr ds:[0FFDF0018h],esi
+</code></pre>
+</div>
+
+<p>Bingo! There you have it. ;-)</p>
+
+
+</article>
+
+<div class="page-navigation">
+	
+		<a class="home" href="/" title="Back to Homepage">Home</a>
+  
+</div>
+
+		</main>
+
+		<div class="footer">
+  <span class="block">Made with &hearts; using <a href="http://jekyllrb.com/">Jekyll</a> &amp; <a href="https://github.com/heiswayi/the-plain" title="The Plain theme by Heiswayi Nrird">The Plain</a> &middot; &lt;/&gt; on <a href="https://github.com/qmemcpy" title="Hosted on GitHub">GitHub</a></span>
+  <span class="block">&copy; 2017 qmemcpy</span>
+</div>
+
+		<script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
+
+  ga('create', 'UA-99919043-1', 'auto');
+  ga('send', 'pageview');
+
+</script>
+
+
+	</body>
+
+</html>
