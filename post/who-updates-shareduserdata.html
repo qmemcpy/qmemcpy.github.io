@@ -232,7 +232,7 @@ while <code class="highlighter-rouge">!dd</code> accepts <em>physical</em> ones:
 <h1 id="finding-out-the-mappings">Finding out the mappings</h1>
 
 <p>Now, we have the physical address. To find out which virtual addresses are mapped to it, we’ll use <code class="highlighter-rouge">!ptov</code>:
-a full map of all the <strong>p</strong>hysical-<strong>to</strong>-<strong>v</strong>irtual address for the current process. The output is very long,
+a full map of all the <strong>p</strong>hysical-<strong>to</strong>-<strong>v</strong>irtual addresses for the current process. The output is very long,
 so I’ll grep out the non-interesting parts:</p>
 
 <div class="highlighter-rouge"><pre class="highlight"><code>1: kd&gt; !process -1 0
