@@ -1,7 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9 http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd" xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 <url>
-<loc>/post/who-updates-shareduserdata</loc>
+<loc>/post/ida-series-1-hex-rays</loc>
+<lastmod>2017-06-20T03:07:40+02:00</lastmod>
+</url>
+<url>
+<loc>/post/inside-windows-kernel-who-updates-shareduserdata</loc>
 <lastmod>2017-05-24T03:07:40+02:00</lastmod>
 </url>
 <url>

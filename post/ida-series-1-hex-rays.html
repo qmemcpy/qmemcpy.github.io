@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+
+	<head>
+		<meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+
+	<title>IDA series, part 1: the Hex-Rays decompiler</title>
+
+
+<meta name="twitter:card" content="summary" />
+<meta name="twitter:site" content="@" />
+<meta name="twitter:title" content="IDA series, part 1: the Hex-Rays decompiler" />
+<meta name="twitter:description" content="What’s this about?In what I call the IDA series, I will be explaining a bunch of interesting and useful stuff I’ve discovered about the Interactive Disassembler, IDA Pro.I’m writing this because of...">
+
+<meta name="description" content="What’s this about?In what I call the IDA series, I will be explaining a bunch of interesting and useful stuff I’ve discovered about the Interactive Disassemb...">
+
+
+	<meta name="google-site-verification" content="epFgX0s_0RM3CdjwFcsewfXzPov2g8s9ZBOLyaIUH-o">
+
+
+<link rel="icon" href="/assets/favicon.png">
+<link rel="apple-touch-icon" href="/assets/touch-icon.png">
+<link href="https://fonts.googleapis.com/css?family=Karla" rel="stylesheet">
+<link rel="stylesheet" href="/assets/core.css">
+<link rel="canonical" href="/post/ida-series-1-hex-rays">
+<link rel="alternate" type="application/atom+xml" title="qmemcpy - random bits of reverse engineering" href="/feed.xml" />
+
+
+
+   
+	</head>
+
+	<body>
+
+		<aside class="logo">
+
+	
+	
+
+	<a href="/">
+		<img src="/assets/command_line.png" class="gravatar">
+	</a>
+
+</aside>
+
+
+		<main>
+			<article>
+
+	<div class="center">
+		<h1>IDA series, part 1: the Hex-Rays decompiler</h1>
+		<time>June 20, 2017</time>
+	</div>
+
+	<div class="divider"></div>
+
+	<h4 id="whats-this-about">What’s this about?</h4>
+
+<p>In what I call the <em>IDA series</em>, I will be explaining a bunch of interesting and useful stuff I’ve discovered about the Interactive Disassembler, IDA Pro.</p>
+
+<p>I’m writing this because of two reasons:</p>
+
+<ul>
+  <li>Most of the valuable information is scattered around and hard to find. Sometimes, it’s nowhere, and you have to find it out yourself, or ask support/forum for help.</li>
+  <li>A better understanding of the IDA architecture will save you unnecessary frustration, and a lot of time. Knowing the limitations of your tool is just as important as knowing its capabilties. <sup id="fnref:1"><a href="#fn:1" class="footnote">1</a></sup></li>
+</ul>
+
+<h4 id="disassembly---pseudocode-mapping">Disassembly &lt;-&gt; pseudocode mapping</h4>
+
+<p>The first thing you will learn about the decompiler is that it takes disassembly and transforms it into pseudocode. This might sound redundant, but it’s something
+a lot of people don’t realize. For instance, suppose you have a function that compares a variable that holds a bunch of flags against a static value, like this:</p>
+
+<p><img src="http://i.imgur.com/EJlDzj0.png" alt="wrong output" /></p>
+
+<p>Hex-Rays thinks it’s an offset because the value happens to look like an address, but it’s actually a flag check.</p>
+
+<p>There is no option in the pseudocode window to fix this, but since we know that the decompiler maps assembly to pseudocode, we can fix it by placing the cursor on
+the offending <code class="highlighter-rouge">&amp;loc_401001</code>, pressing <kbd>TAB</kbd> to go to the corresponding disassembly, and then, with the cursor over the offending offset, <kbd>H</kbd>, to mark the item as a value,
+not as an offset. After pressing <kbd>F5</kbd> to decompile again, we can see that the code is decompiled as expected:</p>
+
+<p><img src="http://i.imgur.com/DXet5mZ.gif" alt="okay output" /></p>
+
+<h4 id="the-decompiler-does-not-eat-your-branches">The decompiler does not eat your branches</h4>
+
+<p>Some people claim that the decompiler lies. That it just eats branches whenever it wants, and that it’s not reliable, so instead they spend hours staring at kilometric listings of unoptimized,
+repetitive, compiler-bloat assembly. That’s wrong. The decompiler is your friend, and exposes many ways for you to hint it how you want your decompiled pseudocode.</p>
+
+<p>For example, observe this function:</p>
+
+<p><img src="http://i.imgur.com/dNKgPT4.png" alt="random function" /></p>
+
+<p>Now look at the disassembly:</p>
+
+<p><img src="http://i.imgur.com/qcWcbBJ.png" alt="disassembly" /></p>
+
+<p>As you can see, there’s a <code class="highlighter-rouge">cmp</code> and a <code class="highlighter-rouge">jz</code>, yet the decompiler only shows the first branch. Not only that; looking at the graph overview we can see that the function has much more to it:</p>
+
+<p><img src="http://i.imgur.com/0TZ4b53.png" alt="graph overview" /></p>
+
+<p>So why is it that Hex-Rays doesn’t decompile that part of the code?</p>
+
+<p>When decompiling the function for the first time, we see this warning:</p>
+
+<p><img src="http://i.imgur.com/MpafwbM.png" alt="decompiler warning" /></p>
+
+<p>It is telling us that <em>data references to that segment</em> will be replaced with constant values, i.e. it’ll optimize the output by assuming that whatever is in <code class="highlighter-rouge">.r_data</code> will never change.</p>
+
+<p>Now, back at the disassembly, we see:</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>.text:00401799                 cmp     ds:dword_40E000, 0
+.text:004017A0                 jz      short loc_4017E6
+</code></pre>
+</div>
+
+<p>There’s a reference to data there, <code class="highlighter-rouge">dword_40E000</code>. If we check where it is placed, we see it’s in <code class="highlighter-rouge">.r_data</code>:</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>.r_only:0040E000 ; Segment type: Pure data
+.r_only:0040E000 ; Segment permissions: Read
+.r_only:0040E000 _r_only         segment para public 'DATA' use32
+.r_only:0040E000                 assume cs:_r_only
+.r_only:0040E000                 ;org 40E000h
+.r_only:0040E000 dword_40E000    dd 0                    ; DATA XREF: sub_401770+29
+</code></pre>
+</div>
+
+<p>The decompiler assumes that the above disassembly is roughly equal to:</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>if (dword_40E000) {
+	// ...
+}
+</code></pre>
+</div>
+
+<p>Since the value of <code class="highlighter-rouge">dword_40E000</code> is <code class="highlighter-rouge">0</code>, and its region is recognized as read-only, it means that the above code is basically useless code, equivalent to:</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>if (0) {
+	// ...
+}
+</code></pre>
+</div>
+
+<p>In theory, it does nothing, so it optimizes it away. <strong>To fix that</strong>, we can either mark the specific variable as <code class="highlighter-rouge">volatile</code> (the inverse <sup id="fnref:2"><a href="#fn:2" class="footnote">2</a></sup> of a constant / <code class="highlighter-rouge">const</code> / read-only variable), 
+or by marking the entire segment as read-write.</p>
+
+<p><img src="http://i.imgur.com/VIg2mmm.gifD" alt="volatile variable" /></p>
+
+<p><em>(marking the variable volatile)</em></p>
+
+<p><img src="http://i.imgur.com/Qmk6z5K.gif" alt="segment attributes" /></p>
+
+<p><em>(changing segment attributes)</em></p>
+
+<p>Not only that, however. Since Hex-Rays is an optimizing decompiler, it will optimize away junk code that has no effect on the program:</p>
+
+<p><img src="http://i.imgur.com/7jLquSi.png" alt="disasm" /></p>
+
+<p><img src="http://i.imgur.com/kV4HoVn.png" alt="optimized pseudocode" /></p>
+
+<hr />
+
+<p>That’s it for today. If you want me to talk about a specific topic, please manifest yourself in the comments.</p>
+
+<!--
+
+\-\-\-
+
+**Got this far?** You might want to check out the discussion at [reddit](https://www.reddit.com/r/ReverseEngineering/) or [hacker news](https://news.ycombinator.com/item?id=).
+
+-->
+
+<div class="footnotes">
+  <ol>
+    <li id="fn:1">
+      <p>stolen from <a href="https://www.hex-rays.com/products/ida/support/book.shtml">here</a>&nbsp;<a href="#fnref:1" class="reversefootnote">&#8617;&#xfe0e;</a></p>
+    </li>
+    <li id="fn:2">
+      <p><code class="highlighter-rouge">volatile</code> is not strictly the inverse of <code class="highlighter-rouge">const</code>, but in this case, it is&nbsp;<a href="#fnref:2" class="reversefootnote">&#8617;&#xfe0e;</a></p>
+    </li>
+  </ol>
+</div>
+
+
+</article>
+
+<div class="page-navigation">
+	
+		<a class="home" href="/" title="Back to Homepage">Home</a>
+  
+		<span> &middot; </span>
+    <a class="prev" href="/post/inside-windows-kernel-who-updates-shareduserdata" title="PREV: Inside the Windows Kernel: who updates SharedUserData?">&gt;&gt;</a>
+  
+</div>
+
+		</main>
+
+		<div class="footer">
+  <span class="block">Made with &hearts; using <a href="http://jekyllrb.com/">Jekyll</a> &amp; <a href="https://github.com/heiswayi/the-plain" title="The Plain theme by Heiswayi Nrird">The Plain</a> &middot; &lt;/&gt; on <a href="https://github.com/qmemcpy" title="Hosted on GitHub">GitHub</a></span>
+  <span class="block">&copy; 2017 qmemcpy</span>
+</div>
+
+		<script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
+
+  ga('create', 'UA-99919043-1', 'auto');
+  ga('send', 'pageview');
+
+</script>
+
+
+	</body>
+
+</html>
