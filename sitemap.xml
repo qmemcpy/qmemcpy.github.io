@@ -1,6 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9 http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd" xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 <url>
+<loc>/post/ida-series-2-debugging-net</loc>
+<lastmod>2017-06-23T01:40:40+02:00</lastmod>
+</url>
+<url>
 <loc>/post/ida-series-1-hex-rays</loc>
 <lastmod>2017-06-20T03:07:40+02:00</lastmod>
 </url>

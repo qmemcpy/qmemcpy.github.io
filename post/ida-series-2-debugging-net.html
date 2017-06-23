@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+
+	<head>
+		<meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+
+	<title>IDA series, part 2: debugging a .NET executable</title>
+
+
+<meta name="twitter:card" content="summary" />
+<meta name="twitter:site" content="@" />
+<meta name="twitter:title" content="IDA series, part 2: debugging a .NET executable" />
+<meta name="twitter:description" content="Some time ago, I was looking at a piece of malware written in .NET. It called WriteProcessMemory and I was interested in dumping its bufferbefore it was written, but managed debuggers (such as dnSp...">
+
+<meta name="description" content="Some time ago, I was looking at a piece of malware written in .NET. It called WriteProcessMemory and I was interested in dumping its bufferbefore it was writ...">
+
+
+	<meta name="google-site-verification" content="epFgX0s_0RM3CdjwFcsewfXzPov2g8s9ZBOLyaIUH-o">
+
+
+<link rel="icon" href="/assets/favicon.png">
+<link rel="apple-touch-icon" href="/assets/touch-icon.png">
+<link href="https://fonts.googleapis.com/css?family=Karla" rel="stylesheet">
+<link rel="stylesheet" href="/assets/core.css">
+<link rel="canonical" href="/post/ida-series-2-debugging-net">
+<link rel="alternate" type="application/atom+xml" title="qmemcpy - random bits of reverse engineering" href="/feed.xml" />
+
+
+
+   
+	</head>
+
+	<body>
+
+		<aside class="logo">
+
+	
+	
+
+	<a href="/">
+		<img src="/assets/command_line.png" class="gravatar">
+	</a>
+
+</aside>
+
+
+		<main>
+			<article>
+
+	<div class="center">
+		<h1>IDA series, part 2: debugging a .NET executable</h1>
+		<time>June 23, 2017</time>
+	</div>
+
+	<div class="divider"></div>
+
+	<p>Some time ago, I was looking at a piece of malware written in .NET. It called <code class="highlighter-rouge">WriteProcessMemory</code> and I was interested in dumping its buffer
+before it was written, but managed debuggers (such as <em>dnSpy</em>) don’t allow you to easily break on native APIs (or maybe I just don’t know how).
+Besides, the sample was obfuscated and de4dot didn’t help, so a native debugger was the clear choice.</p>
+
+<p>However, if you load a .NET binary in IDA (as a PE file<sup id="fnref:1"><a href="#fn:1" class="footnote">1</a></sup>, not as a .NET assembly), put a breakpoint on the entry point, and run it, it will never break:</p>
+
+<p><img src="http://i.imgur.com/sV2zXdj.png" alt="breakpoint" /></p>
+
+<p><img src="http://i.imgur.com/QMX4IkV.png" alt="it never breaks" /></p>
+
+<p>By the time you manually break, press <kbd>G</kbd>, then type <kbd>kernel32_WriteProcessMemory</kbd>, then put a breakpoint, then resume execution, the malware
+has already had time to call it, and you missed your chance to dump that data.</p>
+
+<p>Why does it not break, though?</p>
+
+<p>Obviously, because the code is never executed: the stub is never called, because the real entry point of a .NET binary is <code class="highlighter-rouge">MSCOREE!ShellShim__CorExeMain</code> (WinDbg helps a lot here):</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>0:000&gt; bp $exentry  ; &lt;- put a breakpoint on the actual entry point
+0:000&gt; g            ; &lt;- run
+Breakpoint 0 hit
+...
+MSCOREE!ShellShim__CorExeMain:
+70fd7cef 8bff            mov     edi,edi
+</code></pre>
+</div>
+
+<p>We now know the real entry point, but <code class="highlighter-rouge">MSCOREE</code> is not in the (static) view of IDA, so we can’t put a breakpoint. So, how can we break on it? (aside from using a different debugger, that is)</p>
+
+<h4 id="changing-the-first-break-event">Changing the first break event</h4>
+
+<p>By default, you can only breakpoint on your binary’s entry point (which might be CRT initialization, a TLS callback, or a custom entry point), but still not the very first possible breakpoint,
+at which the first thread gets set up and which transfers control to your binary. If you’re familiar with OllyDbg, you’ll recognize this as the <em>system breakpoint</em>. In order to set up
+IDA so it breaks there, go to <kbd>Debugger</kbd> &gt; <kbd>Debugger options...</kbd> and mark the <kbd>Suspend on debugging start</kbd> checkbox:</p>
+
+<p><img src="http://i.imgur.com/c0ofbKB.png" alt="suspend on debugging start" /></p>
+
+<p>Then, run the binary, and you’ll see this:</p>
+
+<p><img src="http://i.imgur.com/YK6uIUT.png" alt="first instruction" /></p>
+
+<p>At this point, there’s nothing aside from your binary, and <code class="highlighter-rouge">ntdll.dll</code>. After executing the first instruction, some more modules will be loaded (<code class="highlighter-rouge">kernel32</code>, <code class="highlighter-rouge">kernelbase</code>, <code class="highlighter-rouge">mscoree</code>), and
+the RTL will prepare and run your binary. To get to the <code class="highlighter-rouge">MSCOREE!ShellShim__CorExeMain</code> function, just step a bit until you find a call to <code class="highlighter-rouge">kernel32_BaseThreadInitThunk</code>, and check the
+value of the <code class="highlighter-rouge">EDX</code> register: it points to your target.</p>
+
+<p><img src="http://i.imgur.com/r8iY5Jh.png" alt="the target" /></p>
+
+<h4 id="disclaimer">Disclaimer</h4>
+
+<p>This approach is not the best, mostly because other debuggers such as WinDbg are much more powerful and, in general, better
+(for stuff specific to Windows), but anyway I thought I’d write this post, just for the sake of doing it with IDA.</p>
+
+<hr />
+
+<p>That’s it for today. If you want me to talk about a specific topic, please manifest yourself in the comments.</p>
+
+<!--
+
+\-\-\-
+
+**If you want to leave a comment**, please do it on [reddit]() or [hacker news]().
+
+-->
+
+<div class="footnotes">
+  <ol>
+    <li id="fn:1">
+      <p>Make sure to load the binary <a href="http://i.imgur.com/iqE8C8U.png">as a PE file</a> rather than as a .NET assembly, so that IDA can launch it using the standard Windows debugger&nbsp;<a href="#fnref:1" class="reversefootnote">&#8617;&#xfe0e;</a></p>
+    </li>
+  </ol>
+</div>
+
+
+</article>
+
+<div class="page-navigation">
+	
+		<a class="home" href="/" title="Back to Homepage">Home</a>
+  
+		<span> &middot; </span>
+    <a class="prev" href="/post/ida-series-1-hex-rays" title="PREV: IDA series, part 1: the Hex-Rays decompiler">&gt;&gt;</a>
+  
+</div>
+
+		</main>
+
+		<div class="footer">
+  <span class="block">Made with &hearts; using <a href="http://jekyllrb.com/">Jekyll</a> &amp; <a href="https://github.com/heiswayi/the-plain" title="The Plain theme by Heiswayi Nrird">The Plain</a> &middot; &lt;/&gt; on <a href="https://github.com/qmemcpy" title="Hosted on GitHub">GitHub</a></span>
+  <span class="block">&copy; 2017 qmemcpy</span>
+</div>
+
+		<script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
+
+  ga('create', 'UA-99919043-1', 'auto');
+  ga('send', 'pageview');
+
+</script>
+
+
+	</body>
+
+</html>
