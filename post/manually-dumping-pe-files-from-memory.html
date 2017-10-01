@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+
+	<head>
+		<meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+
+	<title>Manually dumping PE files from memory</title>
+
+
+<meta name="twitter:card" content="summary" />
+<meta name="twitter:site" content="@" />
+<meta name="twitter:title" content="Manually dumping PE files from memory" />
+<meta name="twitter:description" content="In this post, I will show you how to manually dump (non-memory-mapped) PE files from memory using IDA.Before you cringe and spam me some links to plugins such as OllyDumpEx, consider that this post...">
+
+<meta name="description" content="In this post, I will show you how to manually dump (non-memory-mapped) PE files from memory using IDA.Before you cringe and spam me some links to plugins suc...">
+
+
+	<meta name="google-site-verification" content="epFgX0s_0RM3CdjwFcsewfXzPov2g8s9ZBOLyaIUH-o">
+
+
+<link rel="icon" href="/assets/favicon.png">
+<link rel="apple-touch-icon" href="/assets/touch-icon.png">
+<link href="https://fonts.googleapis.com/css?family=Karla" rel="stylesheet">
+<link rel="stylesheet" href="/assets/core.css">
+<link rel="canonical" href="/post/manually-dumping-pe-files-from-memory">
+<link rel="alternate" type="application/atom+xml" title="qmemcpy - random bits of reverse engineering" href="/feed.xml" />
+
+
+
+   
+	</head>
+
+	<body>
+
+		<aside class="logo">
+
+	
+	
+
+	<a href="/">
+		<img src="/assets/command_line.png" class="gravatar">
+	</a>
+
+</aside>
+
+
+		<main>
+			<article>
+
+	<div class="center">
+		<h1>Manually dumping PE files from memory</h1>
+		<time>October 1, 2017</time>
+	</div>
+
+	<div class="divider"></div>
+
+	<p>In this post, I will show you how to manually dump (non-memory-mapped) PE files from memory using IDA.</p>
+
+<p>Before you cringe and spam me some links to plugins such as <em>OllyDumpEx</em>, consider that this post is oriented
+towards understanding the PE file format a bit deeper and not towards reinventing the wheel.</p>
+
+<hr />
+
+<h2 id="the-basic-structure-of-a-pe-file">The basic structure of a PE file</h2>
+
+<p>A PE file is basically a bunch of blocks of memory (<em>sections</em>) put one after another. The references between them
+are defined in terms of relative addresses (i.e. amount of bytes from the start of the file), and look like this:</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>+----------------------------------------+ addr = 0 (size = 200)
+|MZ   This program...         PE         |
+|                                        | &lt;--- PE headers
+|                                        |
++----------------------------------------+ addr = 200 (size = 100)
+|      Section                           |
++----------------------------------------+ addr = 300 (size = 150)
+|      Section                           |
++----------------------------------------+ addr = 450 (size = 170)
+|      Section                           |
++----------------------------------------+ addr = 620 (size = 80)
+|      Section                           |
++----------------------------------------+ addr = 700
+</code></pre>
+</div>
+
+<p><em>(the values are imaginary for simplicity)</em></p>
+
+<p>The PE headers contain a bunch of information, such as the entry point for the binary, compilation timestamp, section addresses and sizes, etc.</p>
+
+<p>We’re only interested in the sections: if you look closely at the graph above, you’ll see that, if you sum a section’s address plus its size, you get
+an address which points to the next section. And if you take the last section and sum its address and size, you get the size of the file! (address: 620, size: 80; total file size: 700 bytes)</p>
+
+<h2 id="inspecting-the-file">Inspecting the file</h2>
+
+<p>Now that you know the start address of a binary in memory, you have to parse the structures in order to find the size. Don’t be scared, however: IDA gives us
+all we need to do that quickly.</p>
+
+<p>To dissect the structures, we’ll need to load the type libraries that contain them; that is, IDA won’t ever load e.g. OS X structures when analyzing a PE file,
+or viceversa, and that’s done by loading the right type libraries for each file type. However, IDA sometimes doesn’t do the right thing, so I will cover
+all the steps, from scratch to dump.</p>
+
+<p>To load the required structures, press <kbd>Shift</kbd> + <kbd>F11</kbd> to open the Type Libraries window, press <kbd>Ins</kbd> to insert a new one, and
+then select the <code class="highlighter-rouge">ntapi</code> type library:</p>
+
+<p><img src="https://i.imgur.com/jRmXVGC.png" alt="type libraries" /></p>
+
+<p>After that, we need to load the structures we’ll use. In our case, we need <code class="highlighter-rouge">IMAGE_DOS_HEADER</code>, <code class="highlighter-rouge">IMAGE_NT_HEADERS</code> and <code class="highlighter-rouge">IMAGE_SECTION_HEADER</code>. To do this,
+press <kbd>Shift</kbd> + <kbd>F9</kbd>, then <kbd>Ins</kbd> to insert a new structure, then <kbd>Alt</kbd> + <kbd>A</kbd> to insert a pre-defined structure
+(so as to avoid redefining structures that IDA already knows about), and load the previously mentioned structures:</p>
+
+<p><img src="https://i.imgur.com/nLt96sG.png" alt="needed structures" /></p>
+
+<p>As explained above, the last section’s address plus size is the size of the binary. The sections are located after the PE header, and the PE header
+is found by adding together the address of the MZ header (i.e. start of binary) and <code class="highlighter-rouge">e_lfanew</code>.</p>
+
+<p>Now, go to your in-memory file, put the cursor at the start of your <code class="highlighter-rouge">MZ</code> (DOS) header, and press <kbd>Alt</kbd> + <kbd>Q</kbd>, to apply a structure to that offset.
+Pick <code class="highlighter-rouge">IMAGE_DOS_HEADER</code>, and you’ll see this:</p>
+
+<p><img src="https://i.imgur.com/A9VS0Eh.png" alt="DOS header of file" /></p>
+
+<p>As mentioned, the PE header is always at <code class="highlighter-rouge">MZ + e_lfanew</code>, so just take the base address, add <code class="highlighter-rouge">e_lfanew</code> to it (<code class="highlighter-rouge">0xB8</code> in this case), and you’ll end up in the
+PE header, to which you should apply the <code class="highlighter-rouge">IMAGE_NT_HEADERS</code> structure. You’ll get:</p>
+
+<p><img src="https://i.imgur.com/ye2uFIZ.png" alt="nt header" /></p>
+
+<p>Now, take note of the number of sections (because, after all, we’re looking for the last section of the binary), scroll down to the end of the structure,
+and right there, you’ll find an array of contiguous structures, all of which are <code class="highlighter-rouge">IMAGE_SECTION_HEADER</code>s. There are <code class="highlighter-rouge">NtHeader.NumberOfSections</code> sections,
+which in our case is <code class="highlighter-rouge">5</code>, so put the cursor on the first byte, apply the structure <code class="highlighter-rouge">IMAGE_SECTION_HEADER</code> to it, and then press <code class="highlighter-rouge">*</code> to make it an array,
+and specify <code class="highlighter-rouge">5</code> as the number of elements:</p>
+
+<p><img src="https://i.imgur.com/XhXIiPY.gif" alt="array of structures" /></p>
+
+<p>Scroll down to the last structure, add together <code class="highlighter-rouge">PointerToRawData</code> and <code class="highlighter-rouge">SizeOfRawData</code>, and that’s the size of your in-memory binary!</p>
+
+<h2 id="dumping-the-file">Dumping the file</h2>
+
+<p>To dump the file, you can use IDAPython:</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>open("dump.bin", "wb").write(GetManyBytes(mz_addr, size, 1)) # '1' means 'read from debugger memory'
+</code></pre>
+</div>
+
+<p>And done!</p>
+
+<p>There’s a catch, however: if you’re using IDA 7.0 or newer, the above code won’t work (or will work only on the early 7.0 versions). The reason for that is
+that the IDA 7.0 update did breaking changes to the API, and only the earlier versions have a compatibility layer. Making it work for IDA 7+ is left as an exercise
+for the reader :-)</p>
+
+
+</article>
+
+<div class="page-navigation">
+	
+    <a class="next" href="/post/reverse-engineering-malware-trickbot-part-1-packer" title="NEXT: Reverse engineering malware: TrickBot (part 1 - packer)">&lt;&lt;</a>
+		<span> &middot; </span>
+  
+		<a class="home" href="/" title="Back to Homepage">Home</a>
+  
+		<span> &middot; </span>
+    <a class="prev" href="/post/ida-series-2-debugging-net" title="PREV: IDA series, part 2: debugging a .NET executable">&gt;&gt;</a>
+  
+</div>
+
+		</main>
+
+		<div class="footer">
+  <span class="block">Made with &hearts; using <a href="http://jekyllrb.com/">Jekyll</a> &amp; <a href="https://github.com/heiswayi/the-plain" title="The Plain theme by Heiswayi Nrird">The Plain</a> &middot; &lt;/&gt; on <a href="https://github.com/qmemcpy" title="Hosted on GitHub">GitHub</a></span>
+  <span class="block">&copy; 2017 qmemcpy</span>
+</div>
+
+		<script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
+
+  ga('create', 'UA-99919043-1', 'auto');
+  ga('send', 'pageview');
+
+</script>
+
+
+	</body>
+
+</html>
