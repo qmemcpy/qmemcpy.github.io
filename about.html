@@ -54,13 +54,62 @@
 
 	<div class="divider"></div>
 
-	<p>Hello.</p>
+	<script type="text/javascript">
+function toggle_pgp() {
+	var d = document.getElementById('pgp_key');
+	d.style.display = (d.style.display == 'none' ? 'block' : 'none')
+}
+</script>
 
-<p>The main purpose of this theme is to be as simple as it could be, so you can focus on writing your stuffs. This is your About page. You may describe about yourself here; who you are, what are you currently doing, share some of your projects, your social links and how people can contact you, etc.</p>
+<p>If you want to get in touch with me, you can do so on <a href="https://twitter.com/qmemcpy">twitter</a> or via <a href="mailto:qmemcpy@protonmail.com">e-mail</a>.
+If you use the latter, please make sure to use PGP and to attach your public key.</p>
 
-<p><strong>Just write thing that matters..</strong></p>
+<p><a href="#" onclick="toggle_pgp(); return false;">PGP key</a></p>
 
-<p>Enjoy!</p>
+<textarea id="pgp_key" style="display: none; color: #f14e32; background: #eee; font-size: 13px; font-family: Consolas, monospace, x; padding: 6px; width: 100%; height: 650px;" readonly="">
+-----BEGIN PGP PUBLIC KEY BLOCK-----
+Version: GnuPG v2
+
+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
+43BFTMq25Mg7H6ajdLP/ag==
+=DWas
+-----END PGP PUBLIC KEY BLOCK-----
+</textarea>
+
 
 
 </article>
@@ -72,7 +121,8 @@
 		</main>
 
 		<div class="footer">
-  <span class="block">Made with &hearts; using <a href="http://jekyllrb.com/">Jekyll</a> &amp; <a href="https://github.com/heiswayi/the-plain" title="The Plain theme by Heiswayi Nrird">The Plain</a> &middot; &lt;/&gt; on <a href="https://github.com/qmemcpy" title="Hosted on GitHub">GitHub</a></span>
+  <span class="block">Made with &hearts; using <a href="http://jekyllrb.com/">Jekyll</a> &amp; <a href="https://github.com/heiswayi/the-plain" title="The Plain theme by Heiswayi Nrird">The Plain</a></span>
+  <span class="block"><a href="https://github.com/qmemcpy" title="Hosted on GitHub" target="_blank">GitHub</a> &middot; <a href="https://twitter.com/qmemcpy" target="_blank">twitter</a> &middot; <a href="/about">about</a></span>
   <span class="block">&copy; 2017 qmemcpy</span>
 </div>
 
