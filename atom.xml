@@ -1,0 +1,1485 @@
+<?xml version="1.0" encoding="utf-8"?><?xml-stylesheet type="text/xml" href="https://qmemcpy.github.io/feed.xslt.xml"?><feed xmlns="http://www.w3.org/2005/Atom"><generator uri="http://jekyllrb.com" version="3.4.0">Jekyll</generator><link href="https://qmemcpy.github.io/atom.xml" rel="self" type="application/atom+xml" /><link href="https://qmemcpy.github.io/" rel="alternate" type="text/html" /><updated>2017-10-03T22:56:32+02:00</updated><id>https://qmemcpy.github.io//</id><title type="html">qmemcpy - random bits of reverse engineering</title><subtitle>A blog focused on reverse engineering: malware, CTFs, Windows (kernel) and other random stuff I happen to be interested in.</subtitle><entry><title type="html">Reverse engineering malware: TrickBot (part 2 - loader)</title><link href="https://qmemcpy.github.io/post/reverse-engineering-malware-trickbot-part-2-loader" rel="alternate" type="text/html" title="Reverse engineering malware: TrickBot (part 2 - loader)" /><published>2017-10-03T02:00:00+02:00</published><updated>2017-10-03T02:00:00+02:00</updated><id>https://qmemcpy.github.io/post/reverse-engineering-malware-trickbot-part-2-loader</id><content type="html" xml:base="https://qmemcpy.github.io/post/reverse-engineering-malware-trickbot-part-2-loader">&lt;p&gt;In my &lt;a href=&quot;/post/reverse-engineering-malware-trickbot-part-1-packer&quot;&gt;previous post&lt;/a&gt;, I explained how to unpack the TrickBot loader.&lt;/p&gt;
+
+&lt;p&gt;In this one, I will explain how to dump both versions of the core (x86 and x64). The dumping part in itself is not so interesting as are the
+ways you can make IDA help you easily understand what’s going on.&lt;/p&gt;
+
+&lt;hr /&gt;
+
+&lt;h1 id=&quot;starting-analysis&quot;&gt;Starting analysis&lt;/h1&gt;
+
+&lt;p&gt;After dropping the binary in IDA and poking around a bit, you see a bunch of functions and hidden imports, which doesn’t help much:&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://i.imgur.com/76ksYbQ.png&quot; alt=&quot;hidden imports&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;This doesn’t really mean anything at this point, other than a bunch of random symbols. So, let’s get some runtime / dynamic information.&lt;/p&gt;
+
+&lt;p&gt;If you run the binary, you’ll see something particularly interesting:&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://i.imgur.com/TdEj6MS.png&quot; alt=&quot;something interesting&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;It is the first called function, and some parameters are passed to it. If you step over it and check the values of those
+addresses, you’ll quickly see that, in the first parameter, there’s a number that looks like an offset:&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://i.imgur.com/asuxLOo.png&quot; alt=&quot;looks like an offset&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;IDA also marked is as a function pointer, so if you put the cursor over it and press &lt;kbd&gt;O&lt;/kbd&gt; (to mark as an offset), you get:&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://i.imgur.com/FQoGkzf.png&quot; alt=&quot;function pointer&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Effectively, the &lt;code class=&quot;highlighter-rouge&quot;&gt;0x7XXXXXXX&lt;/code&gt; offset and the type information hints from IDA were right: it’s a function pointer, pointing to a Windows
+API call. This means that the function probably initializes the imports table.&lt;/p&gt;
+
+&lt;p&gt;However, after initializing the imports, they still look ugly in the decompiler:&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;  off_404010(0);
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;p&gt;Of course, you could go and rename each API call manually, but really, you don’t want to do that. You have the start of the imports table,
+and if you look at the second parameter of the previously mentioned IAT-loading function, you see:&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;.rdata:00403228 dword_403228 dd 200h                    ; DATA XREF: start+15↑o
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;p&gt;Indeed, that’s the size of the imports table, but, news flash: you don’t even need to know it!&lt;/p&gt;
+
+&lt;h1 id=&quot;prettifying-the-imports&quot;&gt;Prettifying the imports&lt;/h1&gt;
+
+&lt;p&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;dword_xxxxxxxx(arg)&lt;/code&gt; does not help, but IDA already knows about these tricks, and is ready to help. To fix the ugly imports, all you have to
+do is find the start of the imports table, select it&lt;sup id=&quot;fnref:1&quot;&gt;&lt;a href=&quot;#fn:1&quot; class=&quot;footnote&quot;&gt;1&lt;/a&gt;&lt;/sup&gt; and then let IDA know about them.&lt;/p&gt;
+
+&lt;p&gt;To do this, go to the previously mentioned offset (start of imports table), put the cursor there, and press &lt;kbd&gt;Alt&lt;/kbd&gt; + &lt;kbd&gt;L&lt;/kbd&gt; to start a new &lt;em&gt;selection&lt;/em&gt;:
+that is, you’re telling IDA that, no matter if you lose the focus of the window or click somewhere, it should still keep the selection. This is very useful for when you have to select
+a big chunk of memory, such as an imports table:&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://i.imgur.com/sA031wQ.gif&quot; alt=&quot;big selection&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Then, as shown in the previous GIF, scroll down until you find the end, which you can find intuitively: when you stop seeing &lt;code class=&quot;highlighter-rouge&quot;&gt;0x7XXXXXXX&lt;/code&gt; offsets, then you’ve found
+the end of the imports table. It’s as easy as it sounds. And if you have multiple import tables (or a single import table is split over multiple regions), you can repeat the process
+with each chunk.&lt;/p&gt;
+
+&lt;p&gt;Now that you have the table selected, it’s time to rename these offsets. Luckily, IDA already ships with an IDC script designed exactly for this purpose: &lt;code class=&quot;highlighter-rouge&quot;&gt;ida_root/idc/renimp.idc&lt;/code&gt;.
+To use it, press &lt;kbd&gt;Alt&lt;/kbd&gt; + &lt;kbd&gt;F7&lt;/kbd&gt;, then navigate to the script, select it, press &lt;kbd&gt;Alt&lt;/kbd&gt; + &lt;kbd&gt;L&lt;/kbd&gt; again (to cancel the selection), and all the imports
+will be renamed:&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://i.imgur.com/QXQUec8.gif&quot; alt=&quot;all imports renamed&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Now that we have the imports renamed, the binary looks much better:&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://i.imgur.com/lGQ8izK.png&quot; alt=&quot;much better&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Compare that to the old view:&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://i.imgur.com/v1u2XlF.png&quot; alt=&quot;old view&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Now that the binary is much easier to understand, we can quickly reverse some functions (without going too deep into it) and get a global overview of what is the binary doing:&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://i.imgur.com/DFAS2CO.png&quot; alt=&quot;overview&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;As mentioned in the title, this is just a loader that moves itself to a temporary directory, checks OS information (32-bit or 64-bit), and loads the appropiate binary. As you
+can see in the image, I’ve highlighted the variable that is used to decide which resource to load and decode, so in order to dump it, all you have to do is put a breakpoint
+after &lt;code class=&quot;highlighter-rouge&quot;&gt;DecodeStream&lt;/code&gt; and dump &lt;code class=&quot;highlighter-rouge&quot;&gt;len&lt;/code&gt; bytes from &lt;code class=&quot;highlighter-rouge&quot;&gt;buf&lt;/code&gt;, then run the binary again, invert the &lt;code class=&quot;highlighter-rouge&quot;&gt;if ( os_version )&lt;/code&gt; check, and dump &lt;code class=&quot;highlighter-rouge&quot;&gt;len&lt;/code&gt; bytes from &lt;code class=&quot;highlighter-rouge&quot;&gt;buf&lt;/code&gt;, again, to have both
+binaries:&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;➜  ~ file *
+trickbot_core32: PE32 executable (GUI) Intel 80386, for MS Windows
+trickbot_core64: PE32+ executable (GUI) x86-64, for MS Windows
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;p&gt;A quick check of the 32-bit&lt;sup id=&quot;fnref:2&quot;&gt;&lt;a href=&quot;#fn:2&quot; class=&quot;footnote&quot;&gt;2&lt;/a&gt;&lt;/sup&gt; binary in IDA looks great:&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://i.imgur.com/DgF33cO.png&quot; alt=&quot;32-bit binary&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;If you’ve ever reversed TrickBot, you can quickly tell that this, indeed, is TrickBot, because of the &lt;code class=&quot;highlighter-rouge&quot;&gt;CoInitialize*&lt;/code&gt; calls. Interestingly, IDA detects &lt;code class=&quot;highlighter-rouge&quot;&gt;wWinMain&lt;/code&gt; in the
+32-bit version and jumps there as soon as you load the binary, while the 64-bit version sets you back to the real entry point, &lt;code class=&quot;highlighter-rouge&quot;&gt;start&lt;/code&gt;, because the actual &lt;code class=&quot;highlighter-rouge&quot;&gt;main&lt;/code&gt; (user entry point)
+function couldn’t be found automatically. That, however, is analysis of the malware itself, and will happen in the next part.&lt;/p&gt;
+
+&lt;p&gt;&lt;em&gt;To be continued…&lt;/em&gt;&lt;/p&gt;
+
+&lt;hr /&gt;
+&lt;div class=&quot;footnotes&quot;&gt;
+  &lt;ol&gt;
+    &lt;li id=&quot;fn:1&quot;&gt;
+      &lt;p&gt;Be careful: select from the exact start of the imports table, not from 1/2/3 bytes before - else IDA won’t recognize it and won’t help.&amp;nbsp;&lt;a href=&quot;#fnref:1&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
+    &lt;/li&gt;
+    &lt;li id=&quot;fn:2&quot;&gt;
+      &lt;p&gt;The x64 decompiler produces crappy output for this specific binary, which is why I chose the 32-bit version&amp;nbsp;&lt;a href=&quot;#fnref:2&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
+    &lt;/li&gt;
+  &lt;/ol&gt;
+&lt;/div&gt;</content><summary type="html">In my previous post, I explained how to unpack the TrickBot loader.
+
+In this one, I will explain how to dump both versions of the core (x86 and x64). The dumping part in itself is not so interesting as are the
+ways you can make IDA help you easily understand what’s going on.
+
+
+
+Starting analysis
+
+After dropping the binary in IDA and poking around a bit, you see a bunch of functions and hidden imports, which doesn’t help much:
+
+
+
+This doesn’t really mean anything at this point, other than a bunch of random symbols. So, let’s get some runtime / dynamic information.
+
+If you run the binary, you’ll see something particularly interesting:
+
+
+
+It is the first called function, and some parameters are passed to it. If you step over it and check the values of those
+addresses, you’ll quickly see that, in the first parameter, there’s a number that looks like an offset:
+
+
+
+IDA also marked is as a function pointer, so if you put the cursor over it and press O (to mark as an offset), you get:
+
+
+
+Effectively, the 0x7XXXXXXX offset and the type information hints from IDA were right: it’s a function pointer, pointing to a Windows
+API call. This means that the function probably initializes the imports table.
+
+However, after initializing the imports, they still look ugly in the decompiler:
+
+  off_404010(0);
+
+
+
+Of course, you could go and rename each API call manually, but really, you don’t want to do that. You have the start of the imports table,
+and if you look at the second parameter of the previously mentioned IAT-loading function, you see:
+
+.rdata:00403228 dword_403228 dd 200h                    ; DATA XREF: start+15↑o
+
+
+
+Indeed, that’s the size of the imports table, but, news flash: you don’t even need to know it!
+
+Prettifying the imports
+
+dword_xxxxxxxx(arg) does not help, but IDA already knows about these tricks, and is ready to help. To fix the ugly imports, all you have to
+do is find the start of the imports table, select it1 and then let IDA know about them.
+
+To do this, go to the previously mentioned offset (start of imports table), put the cursor there, and press Alt + L to start a new selection:
+that is, you’re telling IDA that, no matter if you lose the focus of the window or click somewhere, it should still keep the selection. This is very useful for when you have to select
+a big chunk of memory, such as an imports table:
+
+
+
+Then, as shown in the previous GIF, scroll down until you find the end, which you can find intuitively: when you stop seeing 0x7XXXXXXX offsets, then you’ve found
+the end of the imports table. It’s as easy as it sounds. And if you have multiple import tables (or a single import table is split over multiple regions), you can repeat the process
+with each chunk.
+
+Now that you have the table selected, it’s time to rename these offsets. Luckily, IDA already ships with an IDC script designed exactly for this purpose: ida_root/idc/renimp.idc.
+To use it, press Alt + F7, then navigate to the script, select it, press Alt + L again (to cancel the selection), and all the imports
+will be renamed:
+
+
+
+Now that we have the imports renamed, the binary looks much better:
+
+
+
+Compare that to the old view:
+
+
+
+Now that the binary is much easier to understand, we can quickly reverse some functions (without going too deep into it) and get a global overview of what is the binary doing:
+
+
+
+As mentioned in the title, this is just a loader that moves itself to a temporary directory, checks OS information (32-bit or 64-bit), and loads the appropiate binary. As you
+can see in the image, I’ve highlighted the variable that is used to decide which resource to load and decode, so in order to dump it, all you have to do is put a breakpoint
+after DecodeStream and dump len bytes from buf, then run the binary again, invert the if ( os_version ) check, and dump len bytes from buf, again, to have both
+binaries:
+
+➜  ~ file *
+trickbot_core32: PE32 executable (GUI) Intel 80386, for MS Windows
+trickbot_core64: PE32+ executable (GUI) x86-64, for MS Windows
+
+
+
+A quick check of the 32-bit2 binary in IDA looks great:
+
+
+
+If you’ve ever reversed TrickBot, you can quickly tell that this, indeed, is TrickBot, because of the CoInitialize* calls. Interestingly, IDA detects wWinMain in the
+32-bit version and jumps there as soon as you load the binary, while the 64-bit version sets you back to the real entry point, start, because the actual main (user entry point)
+function couldn’t be found automatically. That, however, is analysis of the malware itself, and will happen in the next part.
+
+To be continued…
+
+
+
+  
+    
+      Be careful: select from the exact start of the imports table, not from 1/2/3 bytes before - else IDA won’t recognize it and won’t help.&amp;nbsp;&amp;#8617;
+    
+    
+      The x64 decompiler produces crappy output for this specific binary, which is why I chose the 32-bit version&amp;nbsp;&amp;#8617;</summary></entry><entry><title type="html">Reverse engineering malware: TrickBot (part 1 - packer)</title><link href="https://qmemcpy.github.io/post/reverse-engineering-malware-trickbot-part-1-packer" rel="alternate" type="text/html" title="Reverse engineering malware: TrickBot (part 1 - packer)" /><published>2017-10-01T02:00:00+02:00</published><updated>2017-10-01T02:00:00+02:00</updated><id>https://qmemcpy.github.io/post/reverse-engineering-malware-trickbot-part-1-packer</id><content type="html" xml:base="https://qmemcpy.github.io/post/reverse-engineering-malware-trickbot-part-1-packer">&lt;p&gt;In this post, I will show how to unpack, dump, and analyze a TrickBot sample. The goal is
+to show the reader the &lt;em&gt;techniques&lt;/em&gt; used by malware analysts and &lt;em&gt;why&lt;/em&gt; they are used, including
+wrong assumptions, mistakes, and everything that happens in real-life malware analysis, in contrast
+to the usual tutorials, where everything goes right (and if something goes wrong, the reader is left alone).&lt;/p&gt;
+
+&lt;p&gt;The requirements are, as usual, basic reverse engineering skills, a VM, and IDA.&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;Sample hash&lt;/strong&gt;: 01e771dc6cf9572eac3d87120d7a7d1ff95fdc1499b668c7fde2919e0f685256&lt;/p&gt;
+
+&lt;hr /&gt;
+
+&lt;p&gt;After opening the sample in IDA, we can quickly see that the sample does a bunch of boring initialization
+(deobfuscating API call names/strings, finding functions, etc):&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://i.imgur.com/IX4W4dU.png&quot; alt=&quot;boring initialization&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Then, it proceeds to call
+&lt;a href=&quot;https://msdn.microsoft.com/en-us/library/windows/desktop/ms683219%28v=vs.85%29.aspx&quot;&gt;GetProcessMemoryInfo&lt;/a&gt;:&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://i.imgur.com/gGkavwe.png&quot; alt=&quot;anti-debug&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;A quick Google search yields &lt;a href=&quot;https://www.gironsec.com/blog/2015/06/anti-debugger-trick-quicky/&quot;&gt;this anti-debug technique&lt;/a&gt;, so if
+your debugger is caught, just invert CF on the corresponding &lt;code class=&quot;highlighter-rouge&quot;&gt;ja&lt;/code&gt; instruction and move on.&lt;sup id=&quot;fnref:1&quot;&gt;&lt;a href=&quot;#fn:1&quot; class=&quot;footnote&quot;&gt;1&lt;/a&gt;&lt;/sup&gt;&lt;/p&gt;
+
+&lt;p&gt;Looking forward, you can see that the sample tries to create a mutex, and if it doesn’t exist, it relaunches itself
+with &lt;code class=&quot;highlighter-rouge&quot;&gt;-l&lt;/code&gt; as a command line parameter, and deletes itself. In the next run, the mutex already exists, so the other branch
+is taken, which is the path that ultimately leads to infection:&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://i.imgur.com/pwDFgYj.png&quot; alt=&quot;infection mutex stuff&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;However, you don’t really need to let it launch another process, attach to it, etc. Just modify the control flow
+so that it directly tries to infect you, to spare yourself a minute or two:&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://i.imgur.com/oZLulzT.gif&quot; alt=&quot;change EIP&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;As you can see, I selected the inverse branch, and used &lt;kbd&gt;Ctrl&lt;/kbd&gt; + &lt;kbd&gt;N&lt;/kbd&gt; to skip through the first step.&lt;/p&gt;
+
+&lt;p&gt;Now, the next function that is called is a bit scary:&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://i.imgur.com/prAksF0.gif&quot; alt=&quot;scary function&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;You don’t need to read nor understand all of that - if you do, you’re accomplishing the author’s goal - to distract
+you from actual analysis. As you can see at the end of that GIF, there’s an API call: &lt;code class=&quot;highlighter-rouge&quot;&gt;CreateProcessA&lt;/code&gt;, which suggests
+that the sample is going to do a RunPE or something like that. You don’t care – all you want is the final, unpacked,
+easy-to-analyze sample, and that’s what you’ll get.&lt;/p&gt;
+
+&lt;p&gt;To proceed, put a breakpoint on &lt;code class=&quot;highlighter-rouge&quot;&gt;CreateProcessA&lt;/code&gt; (you can put it in &lt;code class=&quot;highlighter-rouge&quot;&gt;CreateProcessInternalW&lt;/code&gt; if you’re unsure, as all &lt;code class=&quot;highlighter-rouge&quot;&gt;CreateProcess&lt;/code&gt;
+friends ultimately go through there), and run:&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://i.imgur.com/KwAgXnT.png&quot; alt=&quot;exception&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Oops. Something broke. Sometimes, malware uses SEH to obfuscate the control flow, but if you try to open &lt;code class=&quot;highlighter-rouge&quot;&gt;Debugger&lt;/code&gt; &amp;gt; &lt;code class=&quot;highlighter-rouge&quot;&gt;Debugger windows&lt;/code&gt; &amp;gt; &lt;code class=&quot;highlighter-rouge&quot;&gt;SEH list&lt;/code&gt;, you get an error:&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://i.imgur.com/r0lWCrM.png&quot; alt=&quot;no SEH&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;This suggests that the SEH list is empty, and that the exception is legit (i.e. something broke).
+However, if you run the binary outside of a debugger, it infects you, so it must be us breaking something.&lt;/p&gt;
+
+&lt;p&gt;To find out, look at the faulting instruction:&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;.text:0040286D mov     esi, [ebp+arg_0]
+.text:00402870 mov     dl, [esi+edx] ; esi = 0, edx = 0xA -&amp;gt; exception
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;p&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;esi&lt;/code&gt; is &lt;code class=&quot;highlighter-rouge&quot;&gt;0&lt;/code&gt;, but that’s obviously wrong - to find out what its original value should be, look at the instruction above:
+&lt;code class=&quot;highlighter-rouge&quot;&gt;esi&lt;/code&gt; comes from &lt;code class=&quot;highlighter-rouge&quot;&gt;arg_0&lt;/code&gt;. Cross-reference the function to find out where the first parameter comes from, and you end up with:&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://i.imgur.com/H9T47Dx.png&quot; alt=&quot;important parameter&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://i.imgur.com/mBimrU3.png&quot; alt=&quot;important parameter function&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;As you can see, some global variable is zero. Cross-reference it to see where it gets set,
+and select the &lt;code class=&quot;highlighter-rouge&quot;&gt;w&lt;/code&gt; item (i.e. xref that writes to the variable):&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://i.imgur.com/LJxhp8Z.png&quot; alt=&quot;important variable - write&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;At first sight, it appears that the &lt;code class=&quot;highlighter-rouge&quot;&gt;GlobalAlloc&lt;/code&gt; call is failing, but if you put a breakpoint and run the binary,
+it never hits, and you still get the exception, which means that the other branch is taken - which, in turn, means
+that &lt;code class=&quot;highlighter-rouge&quot;&gt;GetFileSize&lt;/code&gt; is returning &lt;code class=&quot;highlighter-rouge&quot;&gt;-1&lt;/code&gt;. But how can that be possible? The referenced file is the sample itself, why can
+it not get its own size?&lt;/p&gt;
+
+&lt;p&gt;To find the answer, put a breakpoint on &lt;code class=&quot;highlighter-rouge&quot;&gt;GetFileSize&lt;/code&gt;, re-launch the binary, and check the handle passed to the function, to
+find out more about the file that’s causing problems:&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://i.imgur.com/KwAgXnT.png&quot; alt=&quot;exception&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Snap! It doesn’t hit. If you look above, you’ll see:&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;  v151 = kernel32_CreateFileA(a1, 2147483648, 0, 0, 3, 0, 0);
+  if ( v151 == -1 )
+    return 0;
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;p&gt;A-ha! That must be the part that’s returning. Putting a breakpoint on the call to &lt;code class=&quot;highlighter-rouge&quot;&gt;CreateFileA&lt;/code&gt;, you see that’s what effectively
+happens, and that &lt;code class=&quot;highlighter-rouge&quot;&gt;CreateFileA&lt;/code&gt; returns &lt;code class=&quot;highlighter-rouge&quot;&gt;FFFFFFFF&lt;/code&gt; - but why? &lt;code class=&quot;highlighter-rouge&quot;&gt;a1&lt;/code&gt; is just the path to the sample itself, but &lt;code class=&quot;highlighter-rouge&quot;&gt;CreateFileA&lt;/code&gt; can’t
+get a handle to it.&lt;/p&gt;
+
+&lt;p&gt;If you look at the &lt;a href=&quot;https://msdn.microsoft.com/en-us/library/windows/desktop/aa363858(v=vs.85).aspx&quot;&gt;CreateFile documentation&lt;/a&gt;,
+you’ll see that the third parameter is &lt;code class=&quot;highlighter-rouge&quot;&gt;dwShareMode&lt;/code&gt;, and here it is &lt;code class=&quot;highlighter-rouge&quot;&gt;0&lt;/code&gt;, which means that the call is asking for full control over the file, without
+allowing sharing with other processes:&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;Prevents other processes from opening a file or device if they request delete, read, or write access.&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;However, our debugger has a handle to that file, and &lt;code class=&quot;highlighter-rouge&quot;&gt;CreateFileA&lt;/code&gt; won’t close it - it’ll just complain that it can’t
+get that handle, and return &lt;code class=&quot;highlighter-rouge&quot;&gt;-1&lt;/code&gt;. Our assumption is further confirmed by checking &lt;code class=&quot;highlighter-rouge&quot;&gt;TIB.LastErrorValue&lt;/code&gt;:&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;TIB[0000071C]:7EFDD000 dd 20h                                  ; LastErrorValue
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;p&gt;As per the &lt;a href=&quot;https://msdn.microsoft.com/en-us/library/windows/desktop/ms681382(v=vs.85).aspx&quot;&gt;documentation&lt;/a&gt;, &lt;code class=&quot;highlighter-rouge&quot;&gt;0x20&lt;/code&gt; means
+&lt;code class=&quot;highlighter-rouge&quot;&gt;ERROR_SHARING_VIOLATION&lt;/code&gt; - which confirms our previous assumptions. To fix it, the simplest way (imo) is to put a breakpoint on
+the &lt;code class=&quot;highlighter-rouge&quot;&gt;CreateFileA&lt;/code&gt; call and change &lt;code class=&quot;highlighter-rouge&quot;&gt;dwShareMode&lt;/code&gt; to &lt;code class=&quot;highlighter-rouge&quot;&gt;FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE&lt;/code&gt; (all permissions), which
+is &lt;code class=&quot;highlighter-rouge&quot;&gt;1 | 2 | 4&lt;/code&gt; -&amp;gt; &lt;code class=&quot;highlighter-rouge&quot;&gt;7&lt;/code&gt;:&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://i.imgur.com/zBUlPR0.gif&quot; alt=&quot;it works&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;As you can see, &lt;code class=&quot;highlighter-rouge&quot;&gt;eax&lt;/code&gt; now contains a valid &lt;code class=&quot;highlighter-rouge&quot;&gt;HANDLE&lt;/code&gt;, and our &lt;code class=&quot;highlighter-rouge&quot;&gt;CreateProcessA&lt;/code&gt; breapoint finally hits:&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://i.imgur.com/ZrGlvxD.png&quot; alt=&quot;createprocess breakpoint&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;It is creating a process using &lt;code class=&quot;highlighter-rouge&quot;&gt;CREATE_SUSPENDED&lt;/code&gt;, which smells a lot like RunPE / process hollowing / whatever you want to call it. Therefore, we
+risk it and put a breakpoint on &lt;code class=&quot;highlighter-rouge&quot;&gt;ntdll_NtWriteVirtualMemory&lt;/code&gt; and &lt;code class=&quot;highlighter-rouge&quot;&gt;ntdll_NtResumeThread&lt;/code&gt;, and run; the former would supposedly be used to write the PE,
+while the latter to execute the thread that’s going to run the written bytes. The breakpoint on &lt;code class=&quot;highlighter-rouge&quot;&gt;ntdll_NtWriteVirtualMemory&lt;/code&gt; might seem unnecessary, but it
+is quite necessary, because if you manage to catch the non-memory-mapped PE file before it’s written, you can very easily dump it and further reversing
+gets much easier.&lt;/p&gt;
+
+&lt;p&gt;Going forward, after running the binary, the &lt;code class=&quot;highlighter-rouge&quot;&gt;NtWriteVirtualMemory&lt;/code&gt; breakpoint will hit:&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://i.imgur.com/CODq3rD.png&quot; alt=&quot;ntwritevirtualmemory&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;If you check the &lt;code class=&quot;highlighter-rouge&quot;&gt;Buffer&lt;/code&gt; parameter, you see:&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;debug015:00365C80 db  4Dh ; M
+debug015:00365C81 db  5Ah ; Z
+debug015:00365C82 db  90h
+debug015:00365C83 db    0
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;p&gt;Bingo! Now, &lt;a href=&quot;/post/manually-dumping-pe-files-from-memory&quot;&gt;dump that&lt;/a&gt; and kill the current debugging session.&lt;/p&gt;
+
+&lt;p&gt;&lt;em&gt;To be continued…&lt;/em&gt;&lt;/p&gt;
+
+&lt;hr /&gt;
+
+&lt;p&gt;&lt;strong&gt;If you want to leave a comment&lt;/strong&gt;, check out the &lt;a href=&quot;https://www.reddit.com/r/ReverseEngineering/comments/73n9qc/reverse_engineering_malware_trickbot_part_1_packer/&quot;&gt;reddit&lt;/a&gt; discussion.&lt;/p&gt;
+
+&lt;hr /&gt;
+
+&lt;div class=&quot;footnotes&quot;&gt;
+  &lt;ol&gt;
+    &lt;li id=&quot;fn:1&quot;&gt;
+      &lt;p&gt;This “anti-debug” used to catch Cuckoo Sandbox as well (in my experience, at least).&amp;nbsp;&lt;a href=&quot;#fnref:1&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
+    &lt;/li&gt;
+  &lt;/ol&gt;
+&lt;/div&gt;</content><summary type="html">In this post, I will show how to unpack, dump, and analyze a TrickBot sample. The goal is
+to show the reader the techniques used by malware analysts and why they are used, including
+wrong assumptions, mistakes, and everything that happens in real-life malware analysis, in contrast
+to the usual tutorials, where everything goes right (and if something goes wrong, the reader is left alone).
+
+The requirements are, as usual, basic reverse engineering skills, a VM, and IDA.
+
+Sample hash: 01e771dc6cf9572eac3d87120d7a7d1ff95fdc1499b668c7fde2919e0f685256
+
+
+
+After opening the sample in IDA, we can quickly see that the sample does a bunch of boring initialization
+(deobfuscating API call names/strings, finding functions, etc):
+
+
+
+Then, it proceeds to call
+GetProcessMemoryInfo:
+
+
+
+A quick Google search yields this anti-debug technique, so if
+your debugger is caught, just invert CF on the corresponding ja instruction and move on.1
+
+Looking forward, you can see that the sample tries to create a mutex, and if it doesn’t exist, it relaunches itself
+with -l as a command line parameter, and deletes itself. In the next run, the mutex already exists, so the other branch
+is taken, which is the path that ultimately leads to infection:
+
+
+
+However, you don’t really need to let it launch another process, attach to it, etc. Just modify the control flow
+so that it directly tries to infect you, to spare yourself a minute or two:
+
+
+
+As you can see, I selected the inverse branch, and used Ctrl + N to skip through the first step.
+
+Now, the next function that is called is a bit scary:
+
+
+
+You don’t need to read nor understand all of that - if you do, you’re accomplishing the author’s goal - to distract
+you from actual analysis. As you can see at the end of that GIF, there’s an API call: CreateProcessA, which suggests
+that the sample is going to do a RunPE or something like that. You don’t care – all you want is the final, unpacked,
+easy-to-analyze sample, and that’s what you’ll get.
+
+To proceed, put a breakpoint on CreateProcessA (you can put it in CreateProcessInternalW if you’re unsure, as all CreateProcess
+friends ultimately go through there), and run:
+
+
+
+Oops. Something broke. Sometimes, malware uses SEH to obfuscate the control flow, but if you try to open Debugger &amp;gt; Debugger windows &amp;gt; SEH list, you get an error:
+
+
+
+This suggests that the SEH list is empty, and that the exception is legit (i.e. something broke).
+However, if you run the binary outside of a debugger, it infects you, so it must be us breaking something.
+
+To find out, look at the faulting instruction:
+
+.text:0040286D mov     esi, [ebp+arg_0]
+.text:00402870 mov     dl, [esi+edx] ; esi = 0, edx = 0xA -&amp;gt; exception
+
+
+
+esi is 0, but that’s obviously wrong - to find out what its original value should be, look at the instruction above:
+esi comes from arg_0. Cross-reference the function to find out where the first parameter comes from, and you end up with:
+
+
+
+
+
+As you can see, some global variable is zero. Cross-reference it to see where it gets set,
+and select the w item (i.e. xref that writes to the variable):
+
+
+
+At first sight, it appears that the GlobalAlloc call is failing, but if you put a breakpoint and run the binary,
+it never hits, and you still get the exception, which means that the other branch is taken - which, in turn, means
+that GetFileSize is returning -1. But how can that be possible? The referenced file is the sample itself, why can
+it not get its own size?
+
+To find the answer, put a breakpoint on GetFileSize, re-launch the binary, and check the handle passed to the function, to
+find out more about the file that’s causing problems:
+
+
+
+Snap! It doesn’t hit. If you look above, you’ll see:
+
+  v151 = kernel32_CreateFileA(a1, 2147483648, 0, 0, 3, 0, 0);
+  if ( v151 == -1 )
+    return 0;
+
+
+
+A-ha! That must be the part that’s returning. Putting a breakpoint on the call to CreateFileA, you see that’s what effectively
+happens, and that CreateFileA returns FFFFFFFF - but why? a1 is just the path to the sample itself, but CreateFileA can’t
+get a handle to it.
+
+If you look at the CreateFile documentation,
+you’ll see that the third parameter is dwShareMode, and here it is 0, which means that the call is asking for full control over the file, without
+allowing sharing with other processes:
+
+
+  Prevents other processes from opening a file or device if they request delete, read, or write access.
+
+
+However, our debugger has a handle to that file, and CreateFileA won’t close it - it’ll just complain that it can’t
+get that handle, and return -1. Our assumption is further confirmed by checking TIB.LastErrorValue:
+
+TIB[0000071C]:7EFDD000 dd 20h                                  ; LastErrorValue
+
+
+
+As per the documentation, 0x20 means
+ERROR_SHARING_VIOLATION - which confirms our previous assumptions. To fix it, the simplest way (imo) is to put a breakpoint on
+the CreateFileA call and change dwShareMode to FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE (all permissions), which
+is 1 | 2 | 4 -&amp;gt; 7:
+
+
+
+As you can see, eax now contains a valid HANDLE, and our CreateProcessA breapoint finally hits:
+
+
+
+It is creating a process using CREATE_SUSPENDED, which smells a lot like RunPE / process hollowing / whatever you want to call it. Therefore, we
+risk it and put a breakpoint on ntdll_NtWriteVirtualMemory and ntdll_NtResumeThread, and run; the former would supposedly be used to write the PE,
+while the latter to execute the thread that’s going to run the written bytes. The breakpoint on ntdll_NtWriteVirtualMemory might seem unnecessary, but it
+is quite necessary, because if you manage to catch the non-memory-mapped PE file before it’s written, you can very easily dump it and further reversing
+gets much easier.
+
+Going forward, after running the binary, the NtWriteVirtualMemory breakpoint will hit:
+
+
+
+If you check the Buffer parameter, you see:
+
+debug015:00365C80 db  4Dh ; M
+debug015:00365C81 db  5Ah ; Z
+debug015:00365C82 db  90h
+debug015:00365C83 db    0
+
+
+
+Bingo! Now, dump that and kill the current debugging session.
+
+To be continued…
+
+
+
+If you want to leave a comment, check out the reddit discussion.
+
+
+
+
+  
+    
+      This “anti-debug” used to catch Cuckoo Sandbox as well (in my experience, at least).&amp;nbsp;&amp;#8617;</summary></entry><entry><title type="html">Manually dumping PE files from memory</title><link href="https://qmemcpy.github.io/post/manually-dumping-pe-files-from-memory" rel="alternate" type="text/html" title="Manually dumping PE files from memory" /><published>2017-10-01T01:00:00+02:00</published><updated>2017-10-01T01:00:00+02:00</updated><id>https://qmemcpy.github.io/post/manually-dumping-pe-files-from-memory</id><content type="html" xml:base="https://qmemcpy.github.io/post/manually-dumping-pe-files-from-memory">&lt;p&gt;In this post, I will show you how to manually dump (non-memory-mapped) PE files from memory using IDA.&lt;/p&gt;
+
+&lt;p&gt;Before you cringe and spam me some links to plugins such as &lt;em&gt;OllyDumpEx&lt;/em&gt;, consider that this post is oriented
+towards understanding the PE file format a bit deeper and not towards reinventing the wheel.&lt;/p&gt;
+
+&lt;hr /&gt;
+
+&lt;h2 id=&quot;the-basic-structure-of-a-pe-file&quot;&gt;The basic structure of a PE file&lt;/h2&gt;
+
+&lt;p&gt;A PE file is basically a bunch of blocks of memory (&lt;em&gt;sections&lt;/em&gt;) put one after another. The references between them
+are defined in terms of relative addresses (i.e. amount of bytes from the start of the file), and look like this:&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;+----------------------------------------+ addr = 0 (size = 200)
+|MZ   This program...         PE         |
+|                                        | &amp;lt;--- PE headers
+|                                        |
++----------------------------------------+ addr = 200 (size = 100)
+|      Section                           |
++----------------------------------------+ addr = 300 (size = 150)
+|      Section                           |
++----------------------------------------+ addr = 450 (size = 170)
+|      Section                           |
++----------------------------------------+ addr = 620 (size = 80)
+|      Section                           |
++----------------------------------------+ addr = 700
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;p&gt;&lt;em&gt;(the values are imaginary for simplicity)&lt;/em&gt;&lt;/p&gt;
+
+&lt;p&gt;The PE headers contain a bunch of information, such as the entry point for the binary, compilation timestamp, section addresses and sizes, etc.&lt;/p&gt;
+
+&lt;p&gt;We’re only interested in the sections: if you look closely at the graph above, you’ll see that, if you sum a section’s address plus its size, you get
+an address which points to the next section. And if you take the last section and sum its address and size, you get the size of the file! (address: 620, size: 80; total file size: 700 bytes)&lt;/p&gt;
+
+&lt;h2 id=&quot;inspecting-the-file&quot;&gt;Inspecting the file&lt;/h2&gt;
+
+&lt;p&gt;Now that you know the start address of a binary in memory, you have to parse the structures in order to find the size. Don’t be scared, however: IDA gives us
+all we need to do that quickly.&lt;/p&gt;
+
+&lt;p&gt;To dissect the structures, we’ll need to load the type libraries that contain them; that is, IDA won’t ever load e.g. OS X structures when analyzing a PE file,
+or viceversa, and that’s done by loading the right type libraries for each file type. However, IDA sometimes doesn’t do the right thing, so I will cover
+all the steps, from scratch to dump.&lt;/p&gt;
+
+&lt;p&gt;To load the required structures, press &lt;kbd&gt;Shift&lt;/kbd&gt; + &lt;kbd&gt;F11&lt;/kbd&gt; to open the Type Libraries window, press &lt;kbd&gt;Ins&lt;/kbd&gt; to insert a new one, and
+then select the &lt;code class=&quot;highlighter-rouge&quot;&gt;ntapi&lt;/code&gt; type library:&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://i.imgur.com/jRmXVGC.png&quot; alt=&quot;type libraries&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;After that, we need to load the structures we’ll use. In our case, we need &lt;code class=&quot;highlighter-rouge&quot;&gt;IMAGE_DOS_HEADER&lt;/code&gt;, &lt;code class=&quot;highlighter-rouge&quot;&gt;IMAGE_NT_HEADERS&lt;/code&gt; and &lt;code class=&quot;highlighter-rouge&quot;&gt;IMAGE_SECTION_HEADER&lt;/code&gt;. To do this,
+press &lt;kbd&gt;Shift&lt;/kbd&gt; + &lt;kbd&gt;F9&lt;/kbd&gt;, then &lt;kbd&gt;Ins&lt;/kbd&gt; to insert a new structure, then &lt;kbd&gt;Alt&lt;/kbd&gt; + &lt;kbd&gt;A&lt;/kbd&gt; to insert a pre-defined structure
+(so as to avoid redefining structures that IDA already knows about), and load the previously mentioned structures:&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://i.imgur.com/nLt96sG.png&quot; alt=&quot;needed structures&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;As explained above, the last section’s address plus size is the size of the binary. The sections are located after the PE header, and the PE header
+is found by adding together the address of the MZ header (i.e. start of binary) and &lt;code class=&quot;highlighter-rouge&quot;&gt;e_lfanew&lt;/code&gt;.&lt;/p&gt;
+
+&lt;p&gt;Now, go to your in-memory file, put the cursor at the start of your &lt;code class=&quot;highlighter-rouge&quot;&gt;MZ&lt;/code&gt; (DOS) header, and press &lt;kbd&gt;Alt&lt;/kbd&gt; + &lt;kbd&gt;Q&lt;/kbd&gt;, to apply a structure to that offset.
+Pick &lt;code class=&quot;highlighter-rouge&quot;&gt;IMAGE_DOS_HEADER&lt;/code&gt;, and you’ll see this:&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://i.imgur.com/A9VS0Eh.png&quot; alt=&quot;DOS header of file&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;As mentioned, the PE header is always at &lt;code class=&quot;highlighter-rouge&quot;&gt;MZ + e_lfanew&lt;/code&gt;, so just take the base address, add &lt;code class=&quot;highlighter-rouge&quot;&gt;e_lfanew&lt;/code&gt; to it (&lt;code class=&quot;highlighter-rouge&quot;&gt;0xB8&lt;/code&gt; in this case), and you’ll end up in the
+PE header, to which you should apply the &lt;code class=&quot;highlighter-rouge&quot;&gt;IMAGE_NT_HEADERS&lt;/code&gt; structure. You’ll get:&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://i.imgur.com/ye2uFIZ.png&quot; alt=&quot;nt header&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Now, take note of the number of sections (because, after all, we’re looking for the last section of the binary), scroll down to the end of the structure,
+and right there, you’ll find an array of contiguous structures, all of which are &lt;code class=&quot;highlighter-rouge&quot;&gt;IMAGE_SECTION_HEADER&lt;/code&gt;s. There are &lt;code class=&quot;highlighter-rouge&quot;&gt;NtHeader.NumberOfSections&lt;/code&gt; sections,
+which in our case is &lt;code class=&quot;highlighter-rouge&quot;&gt;5&lt;/code&gt;, so put the cursor on the first byte, apply the structure &lt;code class=&quot;highlighter-rouge&quot;&gt;IMAGE_SECTION_HEADER&lt;/code&gt; to it, and then press &lt;code class=&quot;highlighter-rouge&quot;&gt;*&lt;/code&gt; to make it an array,
+and specify &lt;code class=&quot;highlighter-rouge&quot;&gt;5&lt;/code&gt; as the number of elements:&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://i.imgur.com/XhXIiPY.gif&quot; alt=&quot;array of structures&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Scroll down to the last structure, add together &lt;code class=&quot;highlighter-rouge&quot;&gt;PointerToRawData&lt;/code&gt; and &lt;code class=&quot;highlighter-rouge&quot;&gt;SizeOfRawData&lt;/code&gt;, and that’s the size of your in-memory binary!&lt;/p&gt;
+
+&lt;h2 id=&quot;dumping-the-file&quot;&gt;Dumping the file&lt;/h2&gt;
+
+&lt;p&gt;To dump the file, you can use IDAPython:&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;open(&quot;dump.bin&quot;, &quot;wb&quot;).write(GetManyBytes(mz_addr, size, 1)) # '1' means 'read from debugger memory'
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;p&gt;And done!&lt;/p&gt;
+
+&lt;p&gt;There’s a catch, however: if you’re using IDA 7.0 or newer, the above code won’t work (or will work only on the early 7.0 versions). The reason for that is
+that the IDA 7.0 update did breaking changes to the API, and only the earlier versions have a compatibility layer. Making it work for IDA 7+ is left as an exercise
+for the reader :-)&lt;/p&gt;</content><summary type="html">In this post, I will show you how to manually dump (non-memory-mapped) PE files from memory using IDA.
+
+Before you cringe and spam me some links to plugins such as OllyDumpEx, consider that this post is oriented
+towards understanding the PE file format a bit deeper and not towards reinventing the wheel.
+
+
+
+The basic structure of a PE file
+
+A PE file is basically a bunch of blocks of memory (sections) put one after another. The references between them
+are defined in terms of relative addresses (i.e. amount of bytes from the start of the file), and look like this:
+
++----------------------------------------+ addr = 0 (size = 200)
+|MZ   This program...         PE         |
+|                                        | &amp;lt;--- PE headers
+|                                        |
++----------------------------------------+ addr = 200 (size = 100)
+|      Section                           |
++----------------------------------------+ addr = 300 (size = 150)
+|      Section                           |
++----------------------------------------+ addr = 450 (size = 170)
+|      Section                           |
++----------------------------------------+ addr = 620 (size = 80)
+|      Section                           |
++----------------------------------------+ addr = 700
+
+
+
+(the values are imaginary for simplicity)
+
+The PE headers contain a bunch of information, such as the entry point for the binary, compilation timestamp, section addresses and sizes, etc.
+
+We’re only interested in the sections: if you look closely at the graph above, you’ll see that, if you sum a section’s address plus its size, you get
+an address which points to the next section. And if you take the last section and sum its address and size, you get the size of the file! (address: 620, size: 80; total file size: 700 bytes)
+
+Inspecting the file
+
+Now that you know the start address of a binary in memory, you have to parse the structures in order to find the size. Don’t be scared, however: IDA gives us
+all we need to do that quickly.
+
+To dissect the structures, we’ll need to load the type libraries that contain them; that is, IDA won’t ever load e.g. OS X structures when analyzing a PE file,
+or viceversa, and that’s done by loading the right type libraries for each file type. However, IDA sometimes doesn’t do the right thing, so I will cover
+all the steps, from scratch to dump.
+
+To load the required structures, press Shift + F11 to open the Type Libraries window, press Ins to insert a new one, and
+then select the ntapi type library:
+
+
+
+After that, we need to load the structures we’ll use. In our case, we need IMAGE_DOS_HEADER, IMAGE_NT_HEADERS and IMAGE_SECTION_HEADER. To do this,
+press Shift + F9, then Ins to insert a new structure, then Alt + A to insert a pre-defined structure
+(so as to avoid redefining structures that IDA already knows about), and load the previously mentioned structures:
+
+
+
+As explained above, the last section’s address plus size is the size of the binary. The sections are located after the PE header, and the PE header
+is found by adding together the address of the MZ header (i.e. start of binary) and e_lfanew.
+
+Now, go to your in-memory file, put the cursor at the start of your MZ (DOS) header, and press Alt + Q, to apply a structure to that offset.
+Pick IMAGE_DOS_HEADER, and you’ll see this:
+
+
+
+As mentioned, the PE header is always at MZ + e_lfanew, so just take the base address, add e_lfanew to it (0xB8 in this case), and you’ll end up in the
+PE header, to which you should apply the IMAGE_NT_HEADERS structure. You’ll get:
+
+
+
+Now, take note of the number of sections (because, after all, we’re looking for the last section of the binary), scroll down to the end of the structure,
+and right there, you’ll find an array of contiguous structures, all of which are IMAGE_SECTION_HEADERs. There are NtHeader.NumberOfSections sections,
+which in our case is 5, so put the cursor on the first byte, apply the structure IMAGE_SECTION_HEADER to it, and then press * to make it an array,
+and specify 5 as the number of elements:
+
+
+
+Scroll down to the last structure, add together PointerToRawData and SizeOfRawData, and that’s the size of your in-memory binary!
+
+Dumping the file
+
+To dump the file, you can use IDAPython:
+
+open(&quot;dump.bin&quot;, &quot;wb&quot;).write(GetManyBytes(mz_addr, size, 1)) # '1' means 'read from debugger memory'
+
+
+
+And done!
+
+There’s a catch, however: if you’re using IDA 7.0 or newer, the above code won’t work (or will work only on the early 7.0 versions). The reason for that is
+that the IDA 7.0 update did breaking changes to the API, and only the earlier versions have a compatibility layer. Making it work for IDA 7+ is left as an exercise
+for the reader :-)</summary></entry><entry><title type="html">IDA series, part 2: debugging a .NET executable</title><link href="https://qmemcpy.github.io/post/ida-series-2-debugging-net" rel="alternate" type="text/html" title="IDA series, part 2: debugging a .NET executable" /><published>2017-06-23T01:40:40+02:00</published><updated>2017-06-23T01:40:40+02:00</updated><id>https://qmemcpy.github.io/post/ida-series-2-debugging-net</id><content type="html" xml:base="https://qmemcpy.github.io/post/ida-series-2-debugging-net">&lt;p&gt;Some time ago, I was looking at a piece of malware written in .NET. It called &lt;code class=&quot;highlighter-rouge&quot;&gt;WriteProcessMemory&lt;/code&gt; and I was interested in dumping its buffer
+before it was written, but managed debuggers (such as &lt;em&gt;dnSpy&lt;/em&gt;) don’t allow you to easily break on native APIs (or maybe I just don’t know how).
+Besides, the sample was obfuscated and de4dot didn’t help, so a native debugger was the clear choice.&lt;/p&gt;
+
+&lt;p&gt;However, if you load a .NET binary in IDA (as a PE file&lt;sup id=&quot;fnref:1&quot;&gt;&lt;a href=&quot;#fn:1&quot; class=&quot;footnote&quot;&gt;1&lt;/a&gt;&lt;/sup&gt;, not as a .NET assembly), put a breakpoint on the entry point, and run it, it will never break:&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;http://i.imgur.com/sV2zXdj.png&quot; alt=&quot;breakpoint&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;http://i.imgur.com/QMX4IkV.png&quot; alt=&quot;it never breaks&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;By the time you manually break, press &lt;kbd&gt;G&lt;/kbd&gt;, then type &lt;kbd&gt;kernel32_WriteProcessMemory&lt;/kbd&gt;, then put a breakpoint, then resume execution, the malware
+has already had time to call it, and you missed your chance to dump that data.&lt;/p&gt;
+
+&lt;p&gt;Why does it not break, though?&lt;/p&gt;
+
+&lt;p&gt;Obviously, because the code is never executed: the stub is never called, because the real entry point of a .NET binary is &lt;code class=&quot;highlighter-rouge&quot;&gt;MSCOREE!ShellShim__CorExeMain&lt;/code&gt; (WinDbg helps a lot here):&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;0:000&amp;gt; bp $exentry  ; &amp;lt;- put a breakpoint on the actual entry point
+0:000&amp;gt; g            ; &amp;lt;- run
+Breakpoint 0 hit
+...
+MSCOREE!ShellShim__CorExeMain:
+70fd7cef 8bff            mov     edi,edi
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;p&gt;We now know the real entry point, but &lt;code class=&quot;highlighter-rouge&quot;&gt;MSCOREE&lt;/code&gt; is not in the (static) view of IDA, so we can’t put a breakpoint. So, how can we break on it? (aside from using a different debugger, that is)&lt;/p&gt;
+
+&lt;h4 id=&quot;changing-the-first-break-event&quot;&gt;Changing the first break event&lt;/h4&gt;
+
+&lt;p&gt;By default, you can only breakpoint on your binary’s entry point (which might be CRT initialization, a TLS callback, or a custom entry point), but still not the very first possible breakpoint,
+at which the first thread gets set up and which transfers control to your binary. If you’re familiar with OllyDbg, you’ll recognize this as the &lt;em&gt;system breakpoint&lt;/em&gt;. In order to set up
+IDA so it breaks there, go to &lt;kbd&gt;Debugger&lt;/kbd&gt; &amp;gt; &lt;kbd&gt;Debugger options...&lt;/kbd&gt; and mark the &lt;kbd&gt;Suspend on debugging start&lt;/kbd&gt; checkbox:&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;http://i.imgur.com/c0ofbKB.png&quot; alt=&quot;suspend on debugging start&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Then, run the binary, and you’ll see this:&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;http://i.imgur.com/YK6uIUT.png&quot; alt=&quot;first instruction&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;At this point, there’s nothing aside from your binary, and &lt;code class=&quot;highlighter-rouge&quot;&gt;ntdll.dll&lt;/code&gt;. After executing the first instruction, some more modules will be loaded (&lt;code class=&quot;highlighter-rouge&quot;&gt;kernel32&lt;/code&gt;, &lt;code class=&quot;highlighter-rouge&quot;&gt;kernelbase&lt;/code&gt;, &lt;code class=&quot;highlighter-rouge&quot;&gt;mscoree&lt;/code&gt;), and
+the RTL will prepare and run your binary. To get to the &lt;code class=&quot;highlighter-rouge&quot;&gt;MSCOREE!ShellShim__CorExeMain&lt;/code&gt; function, just step a bit until you find a call to &lt;code class=&quot;highlighter-rouge&quot;&gt;kernel32_BaseThreadInitThunk&lt;/code&gt;, and check the
+value of the &lt;code class=&quot;highlighter-rouge&quot;&gt;EDX&lt;/code&gt; register: it points to your target.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;http://i.imgur.com/r8iY5Jh.png&quot; alt=&quot;the target&quot; /&gt;&lt;/p&gt;
+
+&lt;h4 id=&quot;disclaimer&quot;&gt;Disclaimer&lt;/h4&gt;
+
+&lt;p&gt;This approach is not the best, mostly because other debuggers such as WinDbg are much more powerful and, in general, better
+(for stuff specific to Windows), but anyway I thought I’d write this post, just for the sake of doing it with IDA.&lt;/p&gt;
+
+&lt;hr /&gt;
+
+&lt;p&gt;That’s it for today. If you want me to talk about a specific topic, please manifest yourself in the &lt;strong&gt;comments&lt;/strong&gt; on
+&lt;a href=&quot;https://www.reddit.com/r/ReverseEngineering/comments/6j2m0z/ida_series_part_2_debugging_a_net_executable/&quot;&gt;reddit&lt;/a&gt; or &lt;a href=&quot;https://news.ycombinator.com/item?id=14620987&quot;&gt;hacker news&lt;/a&gt;.&lt;/p&gt;
+
+&lt;div class=&quot;footnotes&quot;&gt;
+  &lt;ol&gt;
+    &lt;li id=&quot;fn:1&quot;&gt;
+      &lt;p&gt;Make sure to load the binary &lt;a href=&quot;http://i.imgur.com/iqE8C8U.png&quot;&gt;as a PE file&lt;/a&gt; rather than as a .NET assembly, so that IDA can launch it using the standard Windows debugger&amp;nbsp;&lt;a href=&quot;#fnref:1&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
+    &lt;/li&gt;
+  &lt;/ol&gt;
+&lt;/div&gt;</content><summary type="html">Some time ago, I was looking at a piece of malware written in .NET. It called WriteProcessMemory and I was interested in dumping its buffer
+before it was written, but managed debuggers (such as dnSpy) don’t allow you to easily break on native APIs (or maybe I just don’t know how).
+Besides, the sample was obfuscated and de4dot didn’t help, so a native debugger was the clear choice.
+
+However, if you load a .NET binary in IDA (as a PE file1, not as a .NET assembly), put a breakpoint on the entry point, and run it, it will never break:
+
+
+
+
+
+By the time you manually break, press G, then type kernel32_WriteProcessMemory, then put a breakpoint, then resume execution, the malware
+has already had time to call it, and you missed your chance to dump that data.
+
+Why does it not break, though?
+
+Obviously, because the code is never executed: the stub is never called, because the real entry point of a .NET binary is MSCOREE!ShellShim__CorExeMain (WinDbg helps a lot here):
+
+0:000&amp;gt; bp $exentry  ; &amp;lt;- put a breakpoint on the actual entry point
+0:000&amp;gt; g            ; &amp;lt;- run
+Breakpoint 0 hit
+...
+MSCOREE!ShellShim__CorExeMain:
+70fd7cef 8bff            mov     edi,edi
+
+
+
+We now know the real entry point, but MSCOREE is not in the (static) view of IDA, so we can’t put a breakpoint. So, how can we break on it? (aside from using a different debugger, that is)
+
+Changing the first break event
+
+By default, you can only breakpoint on your binary’s entry point (which might be CRT initialization, a TLS callback, or a custom entry point), but still not the very first possible breakpoint,
+at which the first thread gets set up and which transfers control to your binary. If you’re familiar with OllyDbg, you’ll recognize this as the system breakpoint. In order to set up
+IDA so it breaks there, go to Debugger &amp;gt; Debugger options... and mark the Suspend on debugging start checkbox:
+
+
+
+Then, run the binary, and you’ll see this:
+
+
+
+At this point, there’s nothing aside from your binary, and ntdll.dll. After executing the first instruction, some more modules will be loaded (kernel32, kernelbase, mscoree), and
+the RTL will prepare and run your binary. To get to the MSCOREE!ShellShim__CorExeMain function, just step a bit until you find a call to kernel32_BaseThreadInitThunk, and check the
+value of the EDX register: it points to your target.
+
+
+
+Disclaimer
+
+This approach is not the best, mostly because other debuggers such as WinDbg are much more powerful and, in general, better
+(for stuff specific to Windows), but anyway I thought I’d write this post, just for the sake of doing it with IDA.
+
+
+
+That’s it for today. If you want me to talk about a specific topic, please manifest yourself in the comments on
+reddit or hacker news.
+
+
+  
+    
+      Make sure to load the binary as a PE file rather than as a .NET assembly, so that IDA can launch it using the standard Windows debugger&amp;nbsp;&amp;#8617;</summary></entry><entry><title type="html">IDA series, part 1: the Hex-Rays decompiler</title><link href="https://qmemcpy.github.io/post/ida-series-1-hex-rays" rel="alternate" type="text/html" title="IDA series, part 1: the Hex-Rays decompiler" /><published>2017-06-20T03:07:40+02:00</published><updated>2017-06-20T03:07:40+02:00</updated><id>https://qmemcpy.github.io/post/ida-series-1-hex-rays</id><content type="html" xml:base="https://qmemcpy.github.io/post/ida-series-1-hex-rays">&lt;h4 id=&quot;whats-this-about&quot;&gt;What’s this about?&lt;/h4&gt;
+
+&lt;p&gt;In what I call the &lt;em&gt;IDA series&lt;/em&gt;, I will be explaining a bunch of interesting and useful stuff I’ve discovered about the Interactive Disassembler, IDA Pro.&lt;/p&gt;
+
+&lt;p&gt;I’m writing this because of two reasons:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;Most of the valuable information is scattered around and hard to find. Sometimes, it’s nowhere, and you have to find it out yourself, or ask support/forum for help.&lt;/li&gt;
+  &lt;li&gt;A better understanding of the IDA architecture will save you unnecessary frustration, and a lot of time. Knowing the limitations of your tool is just as important as knowing its capabilties. &lt;sup id=&quot;fnref:1&quot;&gt;&lt;a href=&quot;#fn:1&quot; class=&quot;footnote&quot;&gt;1&lt;/a&gt;&lt;/sup&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h4 id=&quot;disassembly---pseudocode-mapping&quot;&gt;Disassembly &amp;lt;-&amp;gt; pseudocode mapping&lt;/h4&gt;
+
+&lt;p&gt;The first thing you will learn about the decompiler is that it takes disassembly and transforms it into pseudocode. This might sound redundant, but it’s something
+a lot of people don’t realize. For instance, suppose you have a function that compares a variable that holds a bunch of flags against a static value, like this:&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;http://i.imgur.com/EJlDzj0.png&quot; alt=&quot;wrong output&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Hex-Rays thinks it’s an offset because the value happens to look like an address, but it’s actually a flag check.&lt;/p&gt;
+
+&lt;p&gt;There is no option in the pseudocode window to fix this, but since we know that the decompiler maps assembly to pseudocode, we can fix it by placing the cursor on
+the offending &lt;code class=&quot;highlighter-rouge&quot;&gt;&amp;amp;loc_401001&lt;/code&gt;, pressing &lt;kbd&gt;TAB&lt;/kbd&gt; to go to the corresponding disassembly, and then, with the cursor over the offending offset, &lt;kbd&gt;H&lt;/kbd&gt;, to mark the item as a value,
+not as an offset. After pressing &lt;kbd&gt;F5&lt;/kbd&gt; to decompile again, we can see that the code is decompiled as expected:&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;http://i.imgur.com/DXet5mZ.gif&quot; alt=&quot;okay output&quot; /&gt;&lt;/p&gt;
+
+&lt;h4 id=&quot;the-decompiler-does-not-eat-your-branches&quot;&gt;The decompiler does not eat your branches&lt;/h4&gt;
+
+&lt;p&gt;Some people claim that the decompiler lies. That it just eats branches whenever it wants, and that it’s not reliable, so instead they spend hours staring at kilometric listings of unoptimized,
+repetitive, compiler-bloat assembly. That’s wrong. The decompiler is your friend, and exposes many ways for you to hint it how you want your decompiled pseudocode.&lt;/p&gt;
+
+&lt;p&gt;For example, observe this function:&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;http://i.imgur.com/dNKgPT4.png&quot; alt=&quot;random function&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Now look at the disassembly:&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;http://i.imgur.com/qcWcbBJ.png&quot; alt=&quot;disassembly&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;As you can see, there’s a &lt;code class=&quot;highlighter-rouge&quot;&gt;cmp&lt;/code&gt; and a &lt;code class=&quot;highlighter-rouge&quot;&gt;jz&lt;/code&gt;, yet the decompiler only shows the first branch. Not only that; looking at the graph overview we can see that the function has much more to it:&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;http://i.imgur.com/0TZ4b53.png&quot; alt=&quot;graph overview&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;So why is it that Hex-Rays doesn’t decompile that part of the code?&lt;/p&gt;
+
+&lt;p&gt;When decompiling the function for the first time, we see this warning:&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;http://i.imgur.com/MpafwbM.png&quot; alt=&quot;decompiler warning&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;It is telling us that &lt;em&gt;data references to that segment&lt;/em&gt; will be replaced with constant values, i.e. it’ll optimize the output by assuming that whatever is in &lt;code class=&quot;highlighter-rouge&quot;&gt;.r_data&lt;/code&gt; will never change.&lt;/p&gt;
+
+&lt;p&gt;Now, back at the disassembly, we see:&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;.text:00401799                 cmp     ds:dword_40E000, 0
+.text:004017A0                 jz      short loc_4017E6
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;p&gt;There’s a reference to data there, &lt;code class=&quot;highlighter-rouge&quot;&gt;dword_40E000&lt;/code&gt;. If we check where it is placed, we see it’s in &lt;code class=&quot;highlighter-rouge&quot;&gt;.r_data&lt;/code&gt;:&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;.r_only:0040E000 ; Segment type: Pure data
+.r_only:0040E000 ; Segment permissions: Read
+.r_only:0040E000 _r_only         segment para public 'DATA' use32
+.r_only:0040E000                 assume cs:_r_only
+.r_only:0040E000                 ;org 40E000h
+.r_only:0040E000 dword_40E000    dd 0                    ; DATA XREF: sub_401770+29
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;p&gt;The decompiler assumes that the above disassembly is roughly equal to:&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;if (dword_40E000) {
+	// ...
+}
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;p&gt;Since the value of &lt;code class=&quot;highlighter-rouge&quot;&gt;dword_40E000&lt;/code&gt; is &lt;code class=&quot;highlighter-rouge&quot;&gt;0&lt;/code&gt;, and its region is recognized as read-only, it means that the above code is basically useless code, equivalent to:&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;if (0) {
+	// ...
+}
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;p&gt;In theory, it does nothing, so it optimizes it away. &lt;strong&gt;To fix that&lt;/strong&gt;, we can either mark the specific variable as &lt;code class=&quot;highlighter-rouge&quot;&gt;volatile&lt;/code&gt; (the inverse &lt;sup id=&quot;fnref:2&quot;&gt;&lt;a href=&quot;#fn:2&quot; class=&quot;footnote&quot;&gt;2&lt;/a&gt;&lt;/sup&gt; of a constant / &lt;code class=&quot;highlighter-rouge&quot;&gt;const&lt;/code&gt; / read-only variable), 
+or by marking the entire segment as read-write.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;http://i.imgur.com/VIg2mmm.gifD&quot; alt=&quot;volatile variable&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;em&gt;(marking the variable volatile)&lt;/em&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;http://i.imgur.com/Qmk6z5K.gif&quot; alt=&quot;segment attributes&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;em&gt;(changing segment attributes)&lt;/em&gt;&lt;/p&gt;
+
+&lt;p&gt;Not only that, however. Since Hex-Rays is an optimizing decompiler, it will optimize away junk code that has no effect on the program:&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;http://i.imgur.com/7jLquSi.png&quot; alt=&quot;disasm&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;http://i.imgur.com/kV4HoVn.png&quot; alt=&quot;optimized pseudocode&quot; /&gt;&lt;/p&gt;
+
+&lt;hr /&gt;
+
+&lt;p&gt;That’s it for today. If you want me to talk about a specific topic, please manifest yourself in the comments.&lt;/p&gt;
+
+&lt;hr /&gt;
+
+&lt;p&gt;&lt;strong&gt;If you want to leave a comment&lt;/strong&gt;, please do it on &lt;a href=&quot;https://www.reddit.com/r/ReverseEngineering/comments/6ihj7x/ida_series_part_1_the_hexrays_decompiler/&quot;&gt;reddit&lt;/a&gt; or &lt;a href=&quot;https://news.ycombinator.com/item?id=14599118&quot;&gt;hacker news&lt;/a&gt;.&lt;/p&gt;
+
+&lt;div class=&quot;footnotes&quot;&gt;
+  &lt;ol&gt;
+    &lt;li id=&quot;fn:1&quot;&gt;
+      &lt;p&gt;stolen from &lt;a href=&quot;https://www.hex-rays.com/products/ida/support/book.shtml&quot;&gt;here&lt;/a&gt;&amp;nbsp;&lt;a href=&quot;#fnref:1&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
+    &lt;/li&gt;
+    &lt;li id=&quot;fn:2&quot;&gt;
+      &lt;p&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;volatile&lt;/code&gt; is not strictly the inverse of &lt;code class=&quot;highlighter-rouge&quot;&gt;const&lt;/code&gt;, but in this case, it is&amp;nbsp;&lt;a href=&quot;#fnref:2&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
+    &lt;/li&gt;
+  &lt;/ol&gt;
+&lt;/div&gt;</content><summary type="html">What’s this about?
+
+In what I call the IDA series, I will be explaining a bunch of interesting and useful stuff I’ve discovered about the Interactive Disassembler, IDA Pro.
+
+I’m writing this because of two reasons:
+
+
+  Most of the valuable information is scattered around and hard to find. Sometimes, it’s nowhere, and you have to find it out yourself, or ask support/forum for help.
+  A better understanding of the IDA architecture will save you unnecessary frustration, and a lot of time. Knowing the limitations of your tool is just as important as knowing its capabilties. 1
+
+
+Disassembly &amp;lt;-&amp;gt; pseudocode mapping
+
+The first thing you will learn about the decompiler is that it takes disassembly and transforms it into pseudocode. This might sound redundant, but it’s something
+a lot of people don’t realize. For instance, suppose you have a function that compares a variable that holds a bunch of flags against a static value, like this:
+
+
+
+Hex-Rays thinks it’s an offset because the value happens to look like an address, but it’s actually a flag check.
+
+There is no option in the pseudocode window to fix this, but since we know that the decompiler maps assembly to pseudocode, we can fix it by placing the cursor on
+the offending &amp;amp;loc_401001, pressing TAB to go to the corresponding disassembly, and then, with the cursor over the offending offset, H, to mark the item as a value,
+not as an offset. After pressing F5 to decompile again, we can see that the code is decompiled as expected:
+
+
+
+The decompiler does not eat your branches
+
+Some people claim that the decompiler lies. That it just eats branches whenever it wants, and that it’s not reliable, so instead they spend hours staring at kilometric listings of unoptimized,
+repetitive, compiler-bloat assembly. That’s wrong. The decompiler is your friend, and exposes many ways for you to hint it how you want your decompiled pseudocode.
+
+For example, observe this function:
+
+
+
+Now look at the disassembly:
+
+
+
+As you can see, there’s a cmp and a jz, yet the decompiler only shows the first branch. Not only that; looking at the graph overview we can see that the function has much more to it:
+
+
+
+So why is it that Hex-Rays doesn’t decompile that part of the code?
+
+When decompiling the function for the first time, we see this warning:
+
+
+
+It is telling us that data references to that segment will be replaced with constant values, i.e. it’ll optimize the output by assuming that whatever is in .r_data will never change.
+
+Now, back at the disassembly, we see:
+
+.text:00401799                 cmp     ds:dword_40E000, 0
+.text:004017A0                 jz      short loc_4017E6
+
+
+
+There’s a reference to data there, dword_40E000. If we check where it is placed, we see it’s in .r_data:
+
+.r_only:0040E000 ; Segment type: Pure data
+.r_only:0040E000 ; Segment permissions: Read
+.r_only:0040E000 _r_only         segment para public 'DATA' use32
+.r_only:0040E000                 assume cs:_r_only
+.r_only:0040E000                 ;org 40E000h
+.r_only:0040E000 dword_40E000    dd 0                    ; DATA XREF: sub_401770+29
+
+
+
+The decompiler assumes that the above disassembly is roughly equal to:
+
+if (dword_40E000) {
+	// ...
+}
+
+
+
+Since the value of dword_40E000 is 0, and its region is recognized as read-only, it means that the above code is basically useless code, equivalent to:
+
+if (0) {
+	// ...
+}
+
+
+
+In theory, it does nothing, so it optimizes it away. To fix that, we can either mark the specific variable as volatile (the inverse 2 of a constant / const / read-only variable), 
+or by marking the entire segment as read-write.
+
+
+
+(marking the variable volatile)
+
+
+
+(changing segment attributes)
+
+Not only that, however. Since Hex-Rays is an optimizing decompiler, it will optimize away junk code that has no effect on the program:
+
+
+
+
+
+
+
+That’s it for today. If you want me to talk about a specific topic, please manifest yourself in the comments.
+
+
+
+If you want to leave a comment, please do it on reddit or hacker news.
+
+
+  
+    
+      stolen from here&amp;nbsp;&amp;#8617;
+    
+    
+      volatile is not strictly the inverse of const, but in this case, it is&amp;nbsp;&amp;#8617;</summary></entry><entry><title type="html">Inside the Windows Kernel: who updates SharedUserData?</title><link href="https://qmemcpy.github.io/post/who-updates-shareduserdata" rel="alternate" type="text/html" title="Inside the Windows Kernel: who updates SharedUserData?" /><published>2017-05-24T03:07:40+02:00</published><updated>2017-05-24T03:07:40+02:00</updated><id>https://qmemcpy.github.io/post/who-updates-shareduserdata</id><content type="html" xml:base="https://qmemcpy.github.io/post/who-updates-shareduserdata">&lt;p&gt;As you &lt;a href=&quot;http://uninformed.org/index.cgi?v=2&amp;amp;a=2&amp;amp;p=15&quot;&gt;might know&lt;/a&gt;, the SharedUserData structure is present in all Windows NT+ versions, and is always at the same static offset 0x7FFE0000.
+Its purpose is to provide a bunch of interesting data to all the processes, without forcing them to do an expensive syscall.&lt;/p&gt;
+
+&lt;p&gt;You can find the offset in WinDbg like so:&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;0:000&amp;gt; dd SharedUserData L1
+7ffe0000  00000000
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;p&gt;It is the previously mentioned static offset, &lt;code class=&quot;highlighter-rouge&quot;&gt;0x7ffe0000&lt;/code&gt;.&lt;/p&gt;
+
+&lt;p&gt;Now, you can browse the structure in friendly format with &lt;code class=&quot;highlighter-rouge&quot;&gt;dt&lt;/code&gt;, using &lt;code class=&quot;highlighter-rouge&quot;&gt;_KUSER_SHARED_DATA&lt;/code&gt; as the type:&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;0:000&amp;gt; dt _KUSER_SHARED_DATA 7ffe0000
+ntdll!_KUSER_SHARED_DATA
+   +0x000 TickCountLowDeprecated : 0
+   +0x004 TickCountMultiplier : 0xfa00000
+   +0x008 InterruptTime    : _KSYSTEM_TIME
+   +0x014 SystemTime       : _KSYSTEM_TIME
+   +0x020 TimeZoneBias     : _KSYSTEM_TIME
+   ...
+   +0x3e0 XState           : _XSTATE_CONFIGURATION
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;p&gt;&lt;em&gt;(fields skipped for brevity)&lt;/em&gt;&lt;/p&gt;
+
+&lt;p&gt;As you see, there are some fields, such as &lt;code class=&quot;highlighter-rouge&quot;&gt;SystemTime&lt;/code&gt;, which are constantly updated:&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;0:000&amp;gt; dt _KUSER_SHARED_DATA 7ffe0000 SystemTime
+ntdll!_KUSER_SHARED_DATA
+   +0x014 SystemTime : _KSYSTEM_TIME
+
+0:000&amp;gt; dx -r1 (*((ntdll!_KSYSTEM_TIME *)0x7ffe0014))
+(*((ntdll!_KSYSTEM_TIME *)0x7ffe0014))                 [Type: _KSYSTEM_TIME]
+    [+0x000] LowPart          : 0xba4a1f7b [Type: unsigned long] 			; &amp;lt;------ time
+    ...
+
+0:000&amp;gt; dx -r1 (*((ntdll!_KSYSTEM_TIME *)0x7ffe0014))
+(*((ntdll!_KSYSTEM_TIME *)0x7ffe0014))                 [Type: _KSYSTEM_TIME]
+    [+0x000] LowPart          : 0xbb9757c7 [Type: unsigned long]			; &amp;lt;------ time
+    ...
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;p&gt;Now, to see who updates it, we put a hardware breakpoint on write on the &lt;code class=&quot;highlighter-rouge&quot;&gt;LowPart&lt;/code&gt; field:&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;0:000&amp;gt; ba w4 0x7ffe0014
+0:000&amp;gt; g
+*BUSY* Debuggee is running...
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;p&gt;However, it never breaks. If we break manually and check the value, it has been updated:&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;0:001&amp;gt; dx -r1 (*((ntdll!_KSYSTEM_TIME *)0x7ffe0014))
+(*((ntdll!_KSYSTEM_TIME *)0x7ffe0014))                 [Type: _KSYSTEM_TIME]
+    [+0x000] LowPart          : 0x801a52c [Type: unsigned long]
+    [+0x004] High1Time        : 30594240 [Type: long]
+    [+0x008] High2Time        : 30594240 [Type: long]
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;p&gt;Maybe it’s the kernel who updates it, and we just can’t see it from usermode. Let’s quickly switch to kernel debugging:&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;0: kd&amp;gt; !process 0 1 notepad.exe
+PROCESS 8d379550  SessionId: 1  Cid: 0640    Peb: 7ffdf000  ParentCid: 0a1c
+        ^^^^^^^^
+    ...
+
+0: kd&amp;gt; .process /p /r /i 8d379550
+You need to continue execution (press 'g' &amp;lt;enter&amp;gt;) for the context
+to be switched. When the debugger breaks in again, you will be in
+the new process context.
+0: kd&amp;gt; g
+Break instruction exception - code 80000003 (first chance)
+nt!RtlpBreakWithStatusInstruction:
+82a8c110 cc              int     3
+0: kd&amp;gt; !process -1 0
+PROCESS 8d379550  SessionId: 1  Cid: 0640    Peb: 7ffdf000  ParentCid: 0a1c
+    DirBase: 3fdd1680  ObjectTable: 8b5b9cb8  HandleCount:  74.
+    Image: notepad.exe
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;p&gt;We are in the process’ context. Let’s make sure that SharedUserData is still at the same offset:&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;0: kd&amp;gt; dd SharedUserData L1
+7ffe0000  00000000
+0: kd&amp;gt; dt _KUSER_SHARED_DATA 7ffe0000
+nt!_KUSER_SHARED_DATA
+   +0x000 TickCountLowDeprecated : 0
+   +0x004 TickCountMultiplier : 0xf99a027
+   +0x008 InterruptTime    : _KSYSTEM_TIME
+   +0x014 SystemTime       : _KSYSTEM_TIME
+   ...
+   +0x3e0 XState           : _XSTATE_CONFIGURATION
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;p&gt;It effectively is. Let’s put a breakpoint and see what happens:&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;0: kd&amp;gt; dx -r1 ((ntkrpamp!_KSYSTEM_TIME *)0x7ffe0014)
+((ntkrpamp!_KSYSTEM_TIME *)0x7ffe0014)                 : 0x7ffe0014 [Type: _KSYSTEM_TIME *]
+    [+0x000] LowPart          : 0x2ffad577 [Type: unsigned long]
+    [+0x004] High1Time        : 30594240 [Type: long]
+    [+0x008] High2Time        : 30594240 [Type: long]
+0: kd&amp;gt; ba w4 0x7ffe0014
+0: kd&amp;gt; g
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;p&gt;Still nothing, it won’t break, even though the value is continuously updated. What’s up?&lt;/p&gt;
+
+&lt;p&gt;What happens is that &lt;strong&gt;the value at that address is being updated from another virtual address mapping&lt;/strong&gt;. That effectively means that the SharedUserData structure
+is mapped (at least) twice: once at the static offset, and (at least) once for whoever updates it. That means there are two or more virtual addresses
+that are mapped to the same physical address, so when you update the value of one, the other one updates as well. And the hardware breakpoints never break because
+&lt;a href=&quot;https://blogs.msdn.microsoft.com/oldnewthing/20080509-00/?p=22383&quot;&gt;data breakpoints are based on the linear address, not the physical address&lt;/a&gt;.&lt;/p&gt;
+
+&lt;p&gt;So what can we do to find out who is updating &lt;code class=&quot;highlighter-rouge&quot;&gt;SystemTime&lt;/code&gt;? We’ll translate the virtual address to a physical one, and then find out all the virtual addresses
+mapped to it. Then we can set a breakpoint on each mapping and see what happens.&lt;/p&gt;
+
+&lt;h1 id=&quot;translating-a-virtual-address-to-a-physical-one&quot;&gt;Translating a virtual address to a physical one&lt;/h1&gt;
+
+&lt;p&gt;We’ll refer to the &lt;a href=&quot;https://msdn.microsoft.com/en-us/windows/hardware/ff539310.aspx&quot;&gt;MSDN documentation&lt;/a&gt;, and do it the &lt;code class=&quot;highlighter-rouge&quot;&gt;!pte&lt;/code&gt; way.&lt;/p&gt;
+
+&lt;p&gt;First, we have to determine the &lt;em&gt;byte index&lt;/em&gt; of the address, i.e. the lowest 12 bits. For my case, the address is &lt;code class=&quot;highlighter-rouge&quot;&gt;0x7FFE0014&lt;/code&gt; (&lt;code class=&quot;highlighter-rouge&quot;&gt;SharedUserData.SystemTime&lt;/code&gt;), and the
+lowest 12 bits are &lt;code class=&quot;highlighter-rouge&quot;&gt;0x14&lt;/code&gt;:&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;0111 1111 1111 1110 0000 0000 0001 0100 -&amp;gt; 0x14
+                         ^^^^ ^^^^ ^^^^
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;p&gt;Next, we’ll find the page frame number (PFN) for that address with &lt;code class=&quot;highlighter-rouge&quot;&gt;!pte&lt;/code&gt;:&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;1: kd&amp;gt; !pte 0x7FFE0014
+                    VA 7ffe0014
+PDE at C0601FF8            PTE at C03FFF00
+contains 000000000D946867  contains 80000000001DC005
+pfn d946      ---DA--UWEV  pfn 1dc       -------UR-V
+                --------------&amp;gt;^^^&amp;lt;-----------------
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;p&gt;In this case, the PFN is &lt;code class=&quot;highlighter-rouge&quot;&gt;0x1DC&lt;/code&gt;. Shift it left 12 bits, and you’ll get the physical address of the beginning of that page:&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&amp;gt;&amp;gt;&amp;gt; hex(0x1DC &amp;lt;&amp;lt; 12)
+'0x1dc000'
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;p&gt;Now add the &lt;em&gt;byte index&lt;/em&gt; (previously found), and you’ll have the physical address:&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&amp;gt;&amp;gt;&amp;gt; hex(0x1DC000 + 0x14)
+'0x1dc014'
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;p&gt;Let’s confirm that the physical address points to the same data as the virtual one. The &lt;code class=&quot;highlighter-rouge&quot;&gt;dd&lt;/code&gt; command accepts &lt;em&gt;virtual&lt;/em&gt; addresses,
+while &lt;code class=&quot;highlighter-rouge&quot;&gt;!dd&lt;/code&gt; accepts &lt;em&gt;physical&lt;/em&gt; ones:&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;1: kd&amp;gt; dd 7ffe0000 L4
+7ffe0000  00000000 0f99a027 9dc50308 00000001
+1: kd&amp;gt; !dd 1dc000 L4
+#  1dc000 00000000 0f99a027 9dc50308 00000001
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;p&gt;They seem to point to the same place!&lt;/p&gt;
+
+&lt;h1 id=&quot;finding-out-the-mappings&quot;&gt;Finding out the mappings&lt;/h1&gt;
+
+&lt;p&gt;Now, we have the physical address. To find out which virtual addresses are mapped to it, we’ll use &lt;code class=&quot;highlighter-rouge&quot;&gt;!ptov&lt;/code&gt;:
+a full map of all the &lt;strong&gt;p&lt;/strong&gt;hysical-&lt;strong&gt;to&lt;/strong&gt;-&lt;strong&gt;v&lt;/strong&gt;irtual addresses for the current process. The output is very long,
+so I’ll grep out the non-interesting parts:&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;1: kd&amp;gt; !process -1 0
+PROCESS 8d379550  SessionId: 1  Cid: 0640    Peb: 7ffdf000  ParentCid: 0a1c
+    DirBase: 3fdd1680  ObjectTable: 8b5b9cb8  HandleCount:  73.
+    Image: notepad.exe
+
+1: kd&amp;gt; !ptov 3fdd1680  
+X86PtoV: pagedir 3fdd1680, PAE enabled.
+...
+1dc000 7ffe0000
+1dc000 ffdf0000
+...
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;p&gt;Since the address starts with &lt;code class=&quot;highlighter-rouge&quot;&gt;0x1DC0&lt;/code&gt;, I just searched for all the physical addresses that start with it. Remember that the physical address
+(left column) corresponds to the start of the page, like the virtual address (right column), so you need to add the offset for the structure
+member in question, which is &lt;code class=&quot;highlighter-rouge&quot;&gt;SystemTime&lt;/code&gt; -&amp;gt; &lt;code class=&quot;highlighter-rouge&quot;&gt;SharedUserData + 0x14&lt;/code&gt;:&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;0: kd&amp;gt; ba w4 ffdf0000+14
+0: kd&amp;gt; g
+Breakpoint 0 hit
+nt!KeUpdateSystemTime+0x9e:
+82a8b9e6 89351800dfff    mov     dword ptr ds:[0FFDF0018h],esi
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;p&gt;Bingo! There you have it. ;-)&lt;/p&gt;
+
+&lt;hr /&gt;
+
+&lt;p&gt;&lt;strong&gt;Got this far?&lt;/strong&gt; You might want to check out the discussion at &lt;a href=&quot;https://www.reddit.com/r/ReverseEngineering/comments/6d5akq/who_updates_shareduserdata/&quot;&gt;reddit&lt;/a&gt; or &lt;a href=&quot;https://news.ycombinator.com/item?id=14413758&quot;&gt;hacker news&lt;/a&gt;.&lt;/p&gt;</content><summary type="html">As you might know, the SharedUserData structure is present in all Windows NT+ versions, and is always at the same static offset 0x7FFE0000.
+Its purpose is to provide a bunch of interesting data to all the processes, without forcing them to do an expensive syscall.
+
+You can find the offset in WinDbg like so:
+
+0:000&amp;gt; dd SharedUserData L1
+7ffe0000  00000000
+
+
+
+It is the previously mentioned static offset, 0x7ffe0000.
+
+Now, you can browse the structure in friendly format with dt, using _KUSER_SHARED_DATA as the type:
+
+0:000&amp;gt; dt _KUSER_SHARED_DATA 7ffe0000
+ntdll!_KUSER_SHARED_DATA
+   +0x000 TickCountLowDeprecated : 0
+   +0x004 TickCountMultiplier : 0xfa00000
+   +0x008 InterruptTime    : _KSYSTEM_TIME
+   +0x014 SystemTime       : _KSYSTEM_TIME
+   +0x020 TimeZoneBias     : _KSYSTEM_TIME
+   ...
+   +0x3e0 XState           : _XSTATE_CONFIGURATION
+
+
+
+(fields skipped for brevity)
+
+As you see, there are some fields, such as SystemTime, which are constantly updated:
+
+0:000&amp;gt; dt _KUSER_SHARED_DATA 7ffe0000 SystemTime
+ntdll!_KUSER_SHARED_DATA
+   +0x014 SystemTime : _KSYSTEM_TIME
+
+0:000&amp;gt; dx -r1 (*((ntdll!_KSYSTEM_TIME *)0x7ffe0014))
+(*((ntdll!_KSYSTEM_TIME *)0x7ffe0014))                 [Type: _KSYSTEM_TIME]
+    [+0x000] LowPart          : 0xba4a1f7b [Type: unsigned long] 			; &amp;lt;------ time
+    ...
+
+0:000&amp;gt; dx -r1 (*((ntdll!_KSYSTEM_TIME *)0x7ffe0014))
+(*((ntdll!_KSYSTEM_TIME *)0x7ffe0014))                 [Type: _KSYSTEM_TIME]
+    [+0x000] LowPart          : 0xbb9757c7 [Type: unsigned long]			; &amp;lt;------ time
+    ...
+
+
+
+Now, to see who updates it, we put a hardware breakpoint on write on the LowPart field:
+
+0:000&amp;gt; ba w4 0x7ffe0014
+0:000&amp;gt; g
+*BUSY* Debuggee is running...
+
+
+
+However, it never breaks. If we break manually and check the value, it has been updated:
+
+0:001&amp;gt; dx -r1 (*((ntdll!_KSYSTEM_TIME *)0x7ffe0014))
+(*((ntdll!_KSYSTEM_TIME *)0x7ffe0014))                 [Type: _KSYSTEM_TIME]
+    [+0x000] LowPart          : 0x801a52c [Type: unsigned long]
+    [+0x004] High1Time        : 30594240 [Type: long]
+    [+0x008] High2Time        : 30594240 [Type: long]
+
+
+
+Maybe it’s the kernel who updates it, and we just can’t see it from usermode. Let’s quickly switch to kernel debugging:
+
+0: kd&amp;gt; !process 0 1 notepad.exe
+PROCESS 8d379550  SessionId: 1  Cid: 0640    Peb: 7ffdf000  ParentCid: 0a1c
+        ^^^^^^^^
+    ...
+
+0: kd&amp;gt; .process /p /r /i 8d379550
+You need to continue execution (press 'g' &amp;lt;enter&amp;gt;) for the context
+to be switched. When the debugger breaks in again, you will be in
+the new process context.
+0: kd&amp;gt; g
+Break instruction exception - code 80000003 (first chance)
+nt!RtlpBreakWithStatusInstruction:
+82a8c110 cc              int     3
+0: kd&amp;gt; !process -1 0
+PROCESS 8d379550  SessionId: 1  Cid: 0640    Peb: 7ffdf000  ParentCid: 0a1c
+    DirBase: 3fdd1680  ObjectTable: 8b5b9cb8  HandleCount:  74.
+    Image: notepad.exe
+
+
+
+We are in the process’ context. Let’s make sure that SharedUserData is still at the same offset:
+
+0: kd&amp;gt; dd SharedUserData L1
+7ffe0000  00000000
+0: kd&amp;gt; dt _KUSER_SHARED_DATA 7ffe0000
+nt!_KUSER_SHARED_DATA
+   +0x000 TickCountLowDeprecated : 0
+   +0x004 TickCountMultiplier : 0xf99a027
+   +0x008 InterruptTime    : _KSYSTEM_TIME
+   +0x014 SystemTime       : _KSYSTEM_TIME
+   ...
+   +0x3e0 XState           : _XSTATE_CONFIGURATION
+
+
+
+It effectively is. Let’s put a breakpoint and see what happens:
+
+0: kd&amp;gt; dx -r1 ((ntkrpamp!_KSYSTEM_TIME *)0x7ffe0014)
+((ntkrpamp!_KSYSTEM_TIME *)0x7ffe0014)                 : 0x7ffe0014 [Type: _KSYSTEM_TIME *]
+    [+0x000] LowPart          : 0x2ffad577 [Type: unsigned long]
+    [+0x004] High1Time        : 30594240 [Type: long]
+    [+0x008] High2Time        : 30594240 [Type: long]
+0: kd&amp;gt; ba w4 0x7ffe0014
+0: kd&amp;gt; g
+
+
+
+Still nothing, it won’t break, even though the value is continuously updated. What’s up?
+
+What happens is that the value at that address is being updated from another virtual address mapping. That effectively means that the SharedUserData structure
+is mapped (at least) twice: once at the static offset, and (at least) once for whoever updates it. That means there are two or more virtual addresses
+that are mapped to the same physical address, so when you update the value of one, the other one updates as well. And the hardware breakpoints never break because
+data breakpoints are based on the linear address, not the physical address.
+
+So what can we do to find out who is updating SystemTime? We’ll translate the virtual address to a physical one, and then find out all the virtual addresses
+mapped to it. Then we can set a breakpoint on each mapping and see what happens.
+
+Translating a virtual address to a physical one
+
+We’ll refer to the MSDN documentation, and do it the !pte way.
+
+First, we have to determine the byte index of the address, i.e. the lowest 12 bits. For my case, the address is 0x7FFE0014 (SharedUserData.SystemTime), and the
+lowest 12 bits are 0x14:
+
+0111 1111 1111 1110 0000 0000 0001 0100 -&amp;gt; 0x14
+                         ^^^^ ^^^^ ^^^^
+
+
+
+Next, we’ll find the page frame number (PFN) for that address with !pte:
+
+1: kd&amp;gt; !pte 0x7FFE0014
+                    VA 7ffe0014
+PDE at C0601FF8            PTE at C03FFF00
+contains 000000000D946867  contains 80000000001DC005
+pfn d946      ---DA--UWEV  pfn 1dc       -------UR-V
+                --------------&amp;gt;^^^&amp;lt;-----------------
+
+
+
+In this case, the PFN is 0x1DC. Shift it left 12 bits, and you’ll get the physical address of the beginning of that page:
+
+&amp;gt;&amp;gt;&amp;gt; hex(0x1DC &amp;lt;&amp;lt; 12)
+'0x1dc000'
+
+
+
+Now add the byte index (previously found), and you’ll have the physical address:
+
+&amp;gt;&amp;gt;&amp;gt; hex(0x1DC000 + 0x14)
+'0x1dc014'
+
+
+
+Let’s confirm that the physical address points to the same data as the virtual one. The dd command accepts virtual addresses,
+while !dd accepts physical ones:
+
+1: kd&amp;gt; dd 7ffe0000 L4
+7ffe0000  00000000 0f99a027 9dc50308 00000001
+1: kd&amp;gt; !dd 1dc000 L4
+#  1dc000 00000000 0f99a027 9dc50308 00000001
+
+
+
+They seem to point to the same place!
+
+Finding out the mappings
+
+Now, we have the physical address. To find out which virtual addresses are mapped to it, we’ll use !ptov:
+a full map of all the physical-to-virtual addresses for the current process. The output is very long,
+so I’ll grep out the non-interesting parts:
+
+1: kd&amp;gt; !process -1 0
+PROCESS 8d379550  SessionId: 1  Cid: 0640    Peb: 7ffdf000  ParentCid: 0a1c
+    DirBase: 3fdd1680  ObjectTable: 8b5b9cb8  HandleCount:  73.
+    Image: notepad.exe
+
+1: kd&amp;gt; !ptov 3fdd1680  
+X86PtoV: pagedir 3fdd1680, PAE enabled.
+...
+1dc000 7ffe0000
+1dc000 ffdf0000
+...
+
+
+
+Since the address starts with 0x1DC0, I just searched for all the physical addresses that start with it. Remember that the physical address
+(left column) corresponds to the start of the page, like the virtual address (right column), so you need to add the offset for the structure
+member in question, which is SystemTime -&amp;gt; SharedUserData + 0x14:
+
+0: kd&amp;gt; ba w4 ffdf0000+14
+0: kd&amp;gt; g
+Breakpoint 0 hit
+nt!KeUpdateSystemTime+0x9e:
+82a8b9e6 89351800dfff    mov     dword ptr ds:[0FFDF0018h],esi
+
+
+
+Bingo! There you have it. ;-)
+
+
+
+Got this far? You might want to check out the discussion at reddit or hacker news.</summary></entry></feed>
