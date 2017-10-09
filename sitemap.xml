@@ -1,6 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9 http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd" xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 <url>
+<loc>https://qmemcpy.github.io/post/reverse-engineering-malware-trickbot-part-3-core</loc>
+<lastmod>2017-10-09T02:00:00+02:00</lastmod>
+</url>
+<url>
 <loc>https://qmemcpy.github.io/post/reverse-engineering-malware-trickbot-part-2-loader</loc>
 <lastmod>2017-10-03T02:00:00+02:00</lastmod>
 </url>
