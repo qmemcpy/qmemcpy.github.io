@@ -104,6 +104,10 @@ Simply change the type from &lt;code class=&quot;highlighter-rouge&quot;&gt;ITas
 &lt;p&gt;That’s it, for now. I haven’t found anything else worthy of surgically dissecting in a blog post, because the rest of the bot is just your average boring reversing,
 and I’m not gonna waste your time with that. However, if there’s interest, I can write another post, dissecting how the malware performs the MitB (Man-in-the-Browser)
 attack, or any of the modules it downloads.&lt;/p&gt;
+
+&lt;hr /&gt;
+
+&lt;p&gt;If you want to leave a comment, please do so on &lt;a href=&quot;https://www.reddit.com/r/ReverseEngineering/comments/75gutb/reverse_engineering_malware_trickbot_part_3_core/&quot;&gt;the reddit discussion&lt;/a&gt;.&lt;/p&gt;
 </description>
 				
 				<pubDate>Mon, 09 Oct 2017 02:00:00 +0200</pubDate>
