@@ -3,8 +3,8 @@
 	<channel>
 		<title>qmemcpy - Articles</title>
 		<description>A blog focused on reverse engineering: malware, CTFs, Windows (kernel) and other random stuff I happen to be interested in.</description>
-		<link>https://qmemcpy.github.io</link>
-		<atom:link href="https://qmemcpy.github.io/feed.articles.xml" rel="self" type="application/rss+xml" />
+		<link>https://qmemcpy.io</link>
+		<atom:link href="https://qmemcpy.io/feed.articles.xml" rel="self" type="application/rss+xml" />
 		
 			
 			<item>
@@ -107,8 +107,8 @@ attack, or any of the modules it downloads.&lt;/p&gt;
 </description>
 				
 				<pubDate>Mon, 09 Oct 2017 02:00:00 +0200</pubDate>
-				<link>https://qmemcpy.github.io/post/reverse-engineering-malware-trickbot-part-3-core</link>
-				<guid isPermaLink="true">https://qmemcpy.github.io/post/reverse-engineering-malware-trickbot-part-3-core</guid>
+				<link>https://qmemcpy.io/post/reverse-engineering-malware-trickbot-part-3-core</link>
+				<guid isPermaLink="true">https://qmemcpy.io/post/reverse-engineering-malware-trickbot-part-3-core</guid>
 			</item>
 			
 		
@@ -220,18 +220,18 @@ function couldn’t be found automatically. That, however, is analysis of the ma
 &lt;div class=&quot;footnotes&quot;&gt;
   &lt;ol&gt;
     &lt;li id=&quot;fn:1&quot;&gt;
-      &lt;p&gt;Be careful: select from the exact start of the imports table, not from 1/2/3 bytes before - else IDA won’t recognize it and won’t help.&amp;nbsp;&lt;a href=&quot;#fnref:1&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
+      &lt;p&gt;Be careful: select from the exact start of the imports table, not from 1/2/3 bytes before - else IDA won’t recognize it and won’t help. &lt;a href=&quot;#fnref:1&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
     &lt;/li&gt;
     &lt;li id=&quot;fn:2&quot;&gt;
-      &lt;p&gt;The x64 decompiler produces crappy output for this specific binary, which is why I chose the 32-bit version&amp;nbsp;&lt;a href=&quot;#fnref:2&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
+      &lt;p&gt;The x64 decompiler produces crappy output for this specific binary, which is why I chose the 32-bit version &lt;a href=&quot;#fnref:2&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
     &lt;/li&gt;
   &lt;/ol&gt;
 &lt;/div&gt;
 </description>
 				
 				<pubDate>Tue, 03 Oct 2017 02:00:00 +0200</pubDate>
-				<link>https://qmemcpy.github.io/post/reverse-engineering-malware-trickbot-part-2-loader</link>
-				<guid isPermaLink="true">https://qmemcpy.github.io/post/reverse-engineering-malware-trickbot-part-2-loader</guid>
+				<link>https://qmemcpy.io/post/reverse-engineering-malware-trickbot-part-2-loader</link>
+				<guid isPermaLink="true">https://qmemcpy.io/post/reverse-engineering-malware-trickbot-part-2-loader</guid>
 			</item>
 			
 		
@@ -396,15 +396,15 @@ debug015:00365C83 db    0
 &lt;div class=&quot;footnotes&quot;&gt;
   &lt;ol&gt;
     &lt;li id=&quot;fn:1&quot;&gt;
-      &lt;p&gt;This “anti-debug” used to catch Cuckoo Sandbox as well (in my experience, at least).&amp;nbsp;&lt;a href=&quot;#fnref:1&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
+      &lt;p&gt;This “anti-debug” used to catch Cuckoo Sandbox as well (in my experience, at least). &lt;a href=&quot;#fnref:1&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
     &lt;/li&gt;
   &lt;/ol&gt;
 &lt;/div&gt;
 </description>
 				
 				<pubDate>Sun, 01 Oct 2017 02:00:00 +0200</pubDate>
-				<link>https://qmemcpy.github.io/post/reverse-engineering-malware-trickbot-part-1-packer</link>
-				<guid isPermaLink="true">https://qmemcpy.github.io/post/reverse-engineering-malware-trickbot-part-1-packer</guid>
+				<link>https://qmemcpy.io/post/reverse-engineering-malware-trickbot-part-1-packer</link>
+				<guid isPermaLink="true">https://qmemcpy.io/post/reverse-engineering-malware-trickbot-part-1-packer</guid>
 			</item>
 			
 		
@@ -505,8 +505,8 @@ for the reader :-)&lt;/p&gt;
 </description>
 				
 				<pubDate>Sun, 01 Oct 2017 01:00:00 +0200</pubDate>
-				<link>https://qmemcpy.github.io/post/manually-dumping-pe-files-from-memory</link>
-				<guid isPermaLink="true">https://qmemcpy.github.io/post/manually-dumping-pe-files-from-memory</guid>
+				<link>https://qmemcpy.io/post/manually-dumping-pe-files-from-memory</link>
+				<guid isPermaLink="true">https://qmemcpy.io/post/manually-dumping-pe-files-from-memory</guid>
 			</item>
 			
 		
@@ -573,15 +573,15 @@ value of the &lt;code class=&quot;highlighter-rouge&quot;&gt;EDX&lt;/code&gt; re
 &lt;div class=&quot;footnotes&quot;&gt;
   &lt;ol&gt;
     &lt;li id=&quot;fn:1&quot;&gt;
-      &lt;p&gt;Make sure to load the binary &lt;a href=&quot;http://i.imgur.com/iqE8C8U.png&quot;&gt;as a PE file&lt;/a&gt; rather than as a .NET assembly, so that IDA can launch it using the standard Windows debugger&amp;nbsp;&lt;a href=&quot;#fnref:1&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
+      &lt;p&gt;Make sure to load the binary &lt;a href=&quot;http://i.imgur.com/iqE8C8U.png&quot;&gt;as a PE file&lt;/a&gt; rather than as a .NET assembly, so that IDA can launch it using the standard Windows debugger &lt;a href=&quot;#fnref:1&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
     &lt;/li&gt;
   &lt;/ol&gt;
 &lt;/div&gt;
 </description>
 				
 				<pubDate>Fri, 23 Jun 2017 01:40:40 +0200</pubDate>
-				<link>https://qmemcpy.github.io/post/ida-series-2-debugging-net</link>
-				<guid isPermaLink="true">https://qmemcpy.github.io/post/ida-series-2-debugging-net</guid>
+				<link>https://qmemcpy.io/post/ida-series-2-debugging-net</link>
+				<guid isPermaLink="true">https://qmemcpy.io/post/ida-series-2-debugging-net</guid>
 			</item>
 			
 		
@@ -702,18 +702,18 @@ or by marking the entire segment as read-write.&lt;/p&gt;
 &lt;div class=&quot;footnotes&quot;&gt;
   &lt;ol&gt;
     &lt;li id=&quot;fn:1&quot;&gt;
-      &lt;p&gt;stolen from &lt;a href=&quot;https://www.hex-rays.com/products/ida/support/book.shtml&quot;&gt;here&lt;/a&gt;&amp;nbsp;&lt;a href=&quot;#fnref:1&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
+      &lt;p&gt;stolen from &lt;a href=&quot;https://www.hex-rays.com/products/ida/support/book.shtml&quot;&gt;here&lt;/a&gt; &lt;a href=&quot;#fnref:1&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
     &lt;/li&gt;
     &lt;li id=&quot;fn:2&quot;&gt;
-      &lt;p&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;volatile&lt;/code&gt; is not strictly the inverse of &lt;code class=&quot;highlighter-rouge&quot;&gt;const&lt;/code&gt;, but in this case, it is&amp;nbsp;&lt;a href=&quot;#fnref:2&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
+      &lt;p&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;volatile&lt;/code&gt; is not strictly the inverse of &lt;code class=&quot;highlighter-rouge&quot;&gt;const&lt;/code&gt;, but in this case, it is &lt;a href=&quot;#fnref:2&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
     &lt;/li&gt;
   &lt;/ol&gt;
 &lt;/div&gt;
 </description>
 				
 				<pubDate>Tue, 20 Jun 2017 03:07:40 +0200</pubDate>
-				<link>https://qmemcpy.github.io/post/ida-series-1-hex-rays</link>
-				<guid isPermaLink="true">https://qmemcpy.github.io/post/ida-series-1-hex-rays</guid>
+				<link>https://qmemcpy.io/post/ida-series-1-hex-rays</link>
+				<guid isPermaLink="true">https://qmemcpy.io/post/ida-series-1-hex-rays</guid>
 			</item>
 			
 		
@@ -933,8 +933,8 @@ nt!KeUpdateSystemTime+0x9e:
 </description>
 				
 				<pubDate>Wed, 24 May 2017 03:07:40 +0200</pubDate>
-				<link>https://qmemcpy.github.io/post/who-updates-shareduserdata</link>
-				<guid isPermaLink="true">https://qmemcpy.github.io/post/who-updates-shareduserdata</guid>
+				<link>https://qmemcpy.io/post/who-updates-shareduserdata</link>
+				<guid isPermaLink="true">https://qmemcpy.io/post/who-updates-shareduserdata</guid>
 			</item>
 			
 		

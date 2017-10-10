@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?><?xml-stylesheet type="text/xml" href="https://qmemcpy.github.io/feed.xslt.xml"?><feed xmlns="http://www.w3.org/2005/Atom"><generator uri="http://jekyllrb.com" version="3.4.0">Jekyll</generator><link href="https://qmemcpy.github.io/atom.xml" rel="self" type="application/atom+xml" /><link href="https://qmemcpy.github.io/" rel="alternate" type="text/html" /><updated>2017-10-10T01:26:47+02:00</updated><id>https://qmemcpy.github.io//</id><title type="html">qmemcpy - random bits of reverse engineering</title><subtitle>A blog focused on reverse engineering: malware, CTFs, Windows (kernel) and other random stuff I happen to be interested in.</subtitle><entry><title type="html">Reverse engineering malware: TrickBot (part 3 - core)</title><link href="https://qmemcpy.github.io/post/reverse-engineering-malware-trickbot-part-3-core" rel="alternate" type="text/html" title="Reverse engineering malware: TrickBot (part 3 - core)" /><published>2017-10-09T02:00:00+02:00</published><updated>2017-10-09T02:00:00+02:00</updated><id>https://qmemcpy.github.io/post/reverse-engineering-malware-trickbot-part-3-core</id><content type="html" xml:base="https://qmemcpy.github.io/post/reverse-engineering-malware-trickbot-part-3-core">&lt;p&gt;In my &lt;a href=&quot;/post/reverse-engineering-malware-trickbot-part-2-loader&quot;&gt;previous post&lt;/a&gt;, I explained how to dump the TrickBot core.&lt;/p&gt;
+<?xml version="1.0" encoding="utf-8"?><?xml-stylesheet type="text/xml" href="https://qmemcpy.io/feed.xslt.xml"?><feed xmlns="http://www.w3.org/2005/Atom"><generator uri="http://jekyllrb.com" version="3.4.0">Jekyll</generator><link href="https://qmemcpy.io/atom.xml" rel="self" type="application/atom+xml" /><link href="https://qmemcpy.io/" rel="alternate" type="text/html" /><updated>2017-10-10T02:48:11+02:00</updated><id>https://qmemcpy.io//</id><title type="html">qmemcpy - random bits of reverse engineering</title><subtitle>A blog focused on reverse engineering: malware, CTFs, Windows (kernel) and other random stuff I happen to be interested in.</subtitle><author><name>qmempcy</name></author><entry><title type="html">Reverse engineering malware: TrickBot (part 3 - core)</title><link href="https://qmemcpy.io/post/reverse-engineering-malware-trickbot-part-3-core" rel="alternate" type="text/html" title="Reverse engineering malware: TrickBot (part 3 - core)" /><published>2017-10-09T02:00:00+02:00</published><updated>2017-10-09T02:00:00+02:00</updated><id>https://qmemcpy.io/post/reverse-engineering-malware-trickbot-part-3-core</id><content type="html" xml:base="https://qmemcpy.io/post/reverse-engineering-malware-trickbot-part-3-core">&lt;p&gt;In my &lt;a href=&quot;/post/reverse-engineering-malware-trickbot-part-2-loader&quot;&gt;previous post&lt;/a&gt;, I explained how to dump the TrickBot core.&lt;/p&gt;
 
 &lt;p&gt;In this one, I will show a bunch of tricks that will make the analysis of said core easier. This is &lt;em&gt;not&lt;/em&gt; a full malware analysis - I don’t intend
 to teach you malware reverse engineering, but rather, I’m aiming to make your reverse-engineering process less cumbersome and of higher quality.&lt;/p&gt;
@@ -91,7 +91,7 @@ Simply change the type from &lt;code class=&quot;highlighter-rouge&quot;&gt;ITas
 
 &lt;p&gt;That’s it, for now. I haven’t found anything else worthy of surgically dissecting in a blog post, because the rest of the bot is just your average boring reversing,
 and I’m not gonna waste your time with that. However, if there’s interest, I can write another post, dissecting how the malware performs the MitB (Man-in-the-Browser)
-attack, or any of the modules it downloads.&lt;/p&gt;</content><summary type="html">In my previous post, I explained how to dump the TrickBot core.
+attack, or any of the modules it downloads.&lt;/p&gt;</content><author><name>qmempcy</name></author><summary type="html">In my previous post, I explained how to dump the TrickBot core.
 
 In this one, I will show a bunch of tricks that will make the analysis of said core easier. This is not a full malware analysis - I don’t intend
 to teach you malware reverse engineering, but rather, I’m aiming to make your reverse-engineering process less cumbersome and of higher quality.
@@ -184,7 +184,7 @@ v4 = (*a1-&amp;gt;task_service)-&amp;gt;GetFolder((ITaskService *)a1-&amp;gt;tas
 
 That’s it, for now. I haven’t found anything else worthy of surgically dissecting in a blog post, because the rest of the bot is just your average boring reversing,
 and I’m not gonna waste your time with that. However, if there’s interest, I can write another post, dissecting how the malware performs the MitB (Man-in-the-Browser)
-attack, or any of the modules it downloads.</summary></entry><entry><title type="html">Reverse engineering malware: TrickBot (part 2 - loader)</title><link href="https://qmemcpy.github.io/post/reverse-engineering-malware-trickbot-part-2-loader" rel="alternate" type="text/html" title="Reverse engineering malware: TrickBot (part 2 - loader)" /><published>2017-10-03T02:00:00+02:00</published><updated>2017-10-03T02:00:00+02:00</updated><id>https://qmemcpy.github.io/post/reverse-engineering-malware-trickbot-part-2-loader</id><content type="html" xml:base="https://qmemcpy.github.io/post/reverse-engineering-malware-trickbot-part-2-loader">&lt;p&gt;In my &lt;a href=&quot;/post/reverse-engineering-malware-trickbot-part-1-packer&quot;&gt;previous post&lt;/a&gt;, I explained how to unpack the TrickBot loader.&lt;/p&gt;
+attack, or any of the modules it downloads.</summary></entry><entry><title type="html">Reverse engineering malware: TrickBot (part 2 - loader)</title><link href="https://qmemcpy.io/post/reverse-engineering-malware-trickbot-part-2-loader" rel="alternate" type="text/html" title="Reverse engineering malware: TrickBot (part 2 - loader)" /><published>2017-10-03T02:00:00+02:00</published><updated>2017-10-03T02:00:00+02:00</updated><id>https://qmemcpy.io/post/reverse-engineering-malware-trickbot-part-2-loader</id><content type="html" xml:base="https://qmemcpy.io/post/reverse-engineering-malware-trickbot-part-2-loader">&lt;p&gt;In my &lt;a href=&quot;/post/reverse-engineering-malware-trickbot-part-1-packer&quot;&gt;previous post&lt;/a&gt;, I explained how to unpack the TrickBot loader.&lt;/p&gt;
 
 &lt;p&gt;In this one, I will explain how to dump both versions of the core (x86 and x64). The dumping part in itself is not so interesting as are the
 ways you can make IDA help you easily understand what’s going on.&lt;/p&gt;
@@ -288,13 +288,13 @@ function couldn’t be found automatically. That, however, is analysis of the ma
 &lt;div class=&quot;footnotes&quot;&gt;
   &lt;ol&gt;
     &lt;li id=&quot;fn:1&quot;&gt;
-      &lt;p&gt;Be careful: select from the exact start of the imports table, not from 1/2/3 bytes before - else IDA won’t recognize it and won’t help.&amp;nbsp;&lt;a href=&quot;#fnref:1&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
+      &lt;p&gt;Be careful: select from the exact start of the imports table, not from 1/2/3 bytes before - else IDA won’t recognize it and won’t help. &lt;a href=&quot;#fnref:1&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
     &lt;/li&gt;
     &lt;li id=&quot;fn:2&quot;&gt;
-      &lt;p&gt;The x64 decompiler produces crappy output for this specific binary, which is why I chose the 32-bit version&amp;nbsp;&lt;a href=&quot;#fnref:2&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
+      &lt;p&gt;The x64 decompiler produces crappy output for this specific binary, which is why I chose the 32-bit version &lt;a href=&quot;#fnref:2&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
     &lt;/li&gt;
   &lt;/ol&gt;
-&lt;/div&gt;</content><summary type="html">In my previous post, I explained how to unpack the TrickBot loader.
+&lt;/div&gt;</content><author><name>qmempcy</name></author><summary type="html">In my previous post, I explained how to unpack the TrickBot loader.
 
 In this one, I will explain how to dump both versions of the core (x86 and x64). The dumping part in itself is not so interesting as are the
 ways you can make IDA help you easily understand what’s going on.
@@ -398,10 +398,10 @@ To be continued…
 
   
     
-      Be careful: select from the exact start of the imports table, not from 1/2/3 bytes before - else IDA won’t recognize it and won’t help.&amp;nbsp;&amp;#8617;
+      Be careful: select from the exact start of the imports table, not from 1/2/3 bytes before - else IDA won’t recognize it and won’t help. &amp;#8617;
     
     
-      The x64 decompiler produces crappy output for this specific binary, which is why I chose the 32-bit version&amp;nbsp;&amp;#8617;</summary></entry><entry><title type="html">Reverse engineering malware: TrickBot (part 1 - packer)</title><link href="https://qmemcpy.github.io/post/reverse-engineering-malware-trickbot-part-1-packer" rel="alternate" type="text/html" title="Reverse engineering malware: TrickBot (part 1 - packer)" /><published>2017-10-01T02:00:00+02:00</published><updated>2017-10-01T02:00:00+02:00</updated><id>https://qmemcpy.github.io/post/reverse-engineering-malware-trickbot-part-1-packer</id><content type="html" xml:base="https://qmemcpy.github.io/post/reverse-engineering-malware-trickbot-part-1-packer">&lt;p&gt;In this post, I will show how to unpack, dump, and analyze a TrickBot sample. The goal is
+      The x64 decompiler produces crappy output for this specific binary, which is why I chose the 32-bit version &amp;#8617;</summary></entry><entry><title type="html">Reverse engineering malware: TrickBot (part 1 - packer)</title><link href="https://qmemcpy.io/post/reverse-engineering-malware-trickbot-part-1-packer" rel="alternate" type="text/html" title="Reverse engineering malware: TrickBot (part 1 - packer)" /><published>2017-10-01T02:00:00+02:00</published><updated>2017-10-01T02:00:00+02:00</updated><id>https://qmemcpy.io/post/reverse-engineering-malware-trickbot-part-1-packer</id><content type="html" xml:base="https://qmemcpy.io/post/reverse-engineering-malware-trickbot-part-1-packer">&lt;p&gt;In this post, I will show how to unpack, dump, and analyze a TrickBot sample. The goal is
 to show the reader the &lt;em&gt;techniques&lt;/em&gt; used by malware analysts and &lt;em&gt;why&lt;/em&gt; they are used, including
 wrong assumptions, mistakes, and everything that happens in real-life malware analysis, in contrast
 to the usual tutorials, where everything goes right (and if something goes wrong, the reader is left alone).&lt;/p&gt;
@@ -558,10 +558,10 @@ debug015:00365C83 db    0
 &lt;div class=&quot;footnotes&quot;&gt;
   &lt;ol&gt;
     &lt;li id=&quot;fn:1&quot;&gt;
-      &lt;p&gt;This “anti-debug” used to catch Cuckoo Sandbox as well (in my experience, at least).&amp;nbsp;&lt;a href=&quot;#fnref:1&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
+      &lt;p&gt;This “anti-debug” used to catch Cuckoo Sandbox as well (in my experience, at least). &lt;a href=&quot;#fnref:1&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
     &lt;/li&gt;
   &lt;/ol&gt;
-&lt;/div&gt;</content><summary type="html">In this post, I will show how to unpack, dump, and analyze a TrickBot sample. The goal is
+&lt;/div&gt;</content><author><name>qmempcy</name></author><summary type="html">In this post, I will show how to unpack, dump, and analyze a TrickBot sample. The goal is
 to show the reader the techniques used by malware analysts and why they are used, including
 wrong assumptions, mistakes, and everything that happens in real-life malware analysis, in contrast
 to the usual tutorials, where everything goes right (and if something goes wrong, the reader is left alone).
@@ -718,7 +718,7 @@ If you want to leave a comment, check out the reddit discussion.
 
   
     
-      This “anti-debug” used to catch Cuckoo Sandbox as well (in my experience, at least).&amp;nbsp;&amp;#8617;</summary></entry><entry><title type="html">Manually dumping PE files from memory</title><link href="https://qmemcpy.github.io/post/manually-dumping-pe-files-from-memory" rel="alternate" type="text/html" title="Manually dumping PE files from memory" /><published>2017-10-01T01:00:00+02:00</published><updated>2017-10-01T01:00:00+02:00</updated><id>https://qmemcpy.github.io/post/manually-dumping-pe-files-from-memory</id><content type="html" xml:base="https://qmemcpy.github.io/post/manually-dumping-pe-files-from-memory">&lt;p&gt;In this post, I will show you how to manually dump (non-memory-mapped) PE files from memory using IDA.&lt;/p&gt;
+      This “anti-debug” used to catch Cuckoo Sandbox as well (in my experience, at least). &amp;#8617;</summary></entry><entry><title type="html">Manually dumping PE files from memory</title><link href="https://qmemcpy.io/post/manually-dumping-pe-files-from-memory" rel="alternate" type="text/html" title="Manually dumping PE files from memory" /><published>2017-10-01T01:00:00+02:00</published><updated>2017-10-01T01:00:00+02:00</updated><id>https://qmemcpy.io/post/manually-dumping-pe-files-from-memory</id><content type="html" xml:base="https://qmemcpy.io/post/manually-dumping-pe-files-from-memory">&lt;p&gt;In this post, I will show you how to manually dump (non-memory-mapped) PE files from memory using IDA.&lt;/p&gt;
 
 &lt;p&gt;Before you cringe and spam me some links to plugins such as &lt;em&gt;OllyDumpEx&lt;/em&gt;, consider that this post is oriented
 towards understanding the PE file format a bit deeper and not towards reinventing the wheel.&lt;/p&gt;
@@ -807,7 +807,7 @@ and specify &lt;code class=&quot;highlighter-rouge&quot;&gt;5&lt;/code&gt; as th
 
 &lt;p&gt;There’s a catch, however: if you’re using IDA 7.0 or newer, the above code won’t work (or will work only on the early 7.0 versions). The reason for that is
 that the IDA 7.0 update did breaking changes to the API, and only the earlier versions have a compatibility layer. Making it work for IDA 7+ is left as an exercise
-for the reader :-)&lt;/p&gt;</content><summary type="html">In this post, I will show you how to manually dump (non-memory-mapped) PE files from memory using IDA.
+for the reader :-)&lt;/p&gt;</content><author><name>qmempcy</name></author><summary type="html">In this post, I will show you how to manually dump (non-memory-mapped) PE files from memory using IDA.
 
 Before you cringe and spam me some links to plugins such as OllyDumpEx, consider that this post is oriented
 towards understanding the PE file format a bit deeper and not towards reinventing the wheel.
@@ -896,7 +896,7 @@ And done!
 
 There’s a catch, however: if you’re using IDA 7.0 or newer, the above code won’t work (or will work only on the early 7.0 versions). The reason for that is
 that the IDA 7.0 update did breaking changes to the API, and only the earlier versions have a compatibility layer. Making it work for IDA 7+ is left as an exercise
-for the reader :-)</summary></entry><entry><title type="html">IDA series, part 2: debugging a .NET executable</title><link href="https://qmemcpy.github.io/post/ida-series-2-debugging-net" rel="alternate" type="text/html" title="IDA series, part 2: debugging a .NET executable" /><published>2017-06-23T01:40:40+02:00</published><updated>2017-06-23T01:40:40+02:00</updated><id>https://qmemcpy.github.io/post/ida-series-2-debugging-net</id><content type="html" xml:base="https://qmemcpy.github.io/post/ida-series-2-debugging-net">&lt;p&gt;Some time ago, I was looking at a piece of malware written in .NET. It called &lt;code class=&quot;highlighter-rouge&quot;&gt;WriteProcessMemory&lt;/code&gt; and I was interested in dumping its buffer
+for the reader :-)</summary></entry><entry><title type="html">IDA series, part 2: debugging a .NET executable</title><link href="https://qmemcpy.io/post/ida-series-2-debugging-net" rel="alternate" type="text/html" title="IDA series, part 2: debugging a .NET executable" /><published>2017-06-23T01:40:40+02:00</published><updated>2017-06-23T01:40:40+02:00</updated><id>https://qmemcpy.io/post/ida-series-2-debugging-net</id><content type="html" xml:base="https://qmemcpy.io/post/ida-series-2-debugging-net">&lt;p&gt;Some time ago, I was looking at a piece of malware written in .NET. It called &lt;code class=&quot;highlighter-rouge&quot;&gt;WriteProcessMemory&lt;/code&gt; and I was interested in dumping its buffer
 before it was written, but managed debuggers (such as &lt;em&gt;dnSpy&lt;/em&gt;) don’t allow you to easily break on native APIs (or maybe I just don’t know how).
 Besides, the sample was obfuscated and de4dot didn’t help, so a native debugger was the clear choice.&lt;/p&gt;
 
@@ -955,10 +955,10 @@ value of the &lt;code class=&quot;highlighter-rouge&quot;&gt;EDX&lt;/code&gt; re
 &lt;div class=&quot;footnotes&quot;&gt;
   &lt;ol&gt;
     &lt;li id=&quot;fn:1&quot;&gt;
-      &lt;p&gt;Make sure to load the binary &lt;a href=&quot;http://i.imgur.com/iqE8C8U.png&quot;&gt;as a PE file&lt;/a&gt; rather than as a .NET assembly, so that IDA can launch it using the standard Windows debugger&amp;nbsp;&lt;a href=&quot;#fnref:1&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
+      &lt;p&gt;Make sure to load the binary &lt;a href=&quot;http://i.imgur.com/iqE8C8U.png&quot;&gt;as a PE file&lt;/a&gt; rather than as a .NET assembly, so that IDA can launch it using the standard Windows debugger &lt;a href=&quot;#fnref:1&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
     &lt;/li&gt;
   &lt;/ol&gt;
-&lt;/div&gt;</content><summary type="html">Some time ago, I was looking at a piece of malware written in .NET. It called WriteProcessMemory and I was interested in dumping its buffer
+&lt;/div&gt;</content><author><name>qmempcy</name></author><summary type="html">Some time ago, I was looking at a piece of malware written in .NET. It called WriteProcessMemory and I was interested in dumping its buffer
 before it was written, but managed debuggers (such as dnSpy) don’t allow you to easily break on native APIs (or maybe I just don’t know how).
 Besides, the sample was obfuscated and de4dot didn’t help, so a native debugger was the clear choice.
 
@@ -1017,7 +1017,7 @@ reddit or hacker news.
 
   
     
-      Make sure to load the binary as a PE file rather than as a .NET assembly, so that IDA can launch it using the standard Windows debugger&amp;nbsp;&amp;#8617;</summary></entry><entry><title type="html">IDA series, part 1: the Hex-Rays decompiler</title><link href="https://qmemcpy.github.io/post/ida-series-1-hex-rays" rel="alternate" type="text/html" title="IDA series, part 1: the Hex-Rays decompiler" /><published>2017-06-20T03:07:40+02:00</published><updated>2017-06-20T03:07:40+02:00</updated><id>https://qmemcpy.github.io/post/ida-series-1-hex-rays</id><content type="html" xml:base="https://qmemcpy.github.io/post/ida-series-1-hex-rays">&lt;h4 id=&quot;whats-this-about&quot;&gt;What’s this about?&lt;/h4&gt;
+      Make sure to load the binary as a PE file rather than as a .NET assembly, so that IDA can launch it using the standard Windows debugger &amp;#8617;</summary></entry><entry><title type="html">IDA series, part 1: the Hex-Rays decompiler</title><link href="https://qmemcpy.io/post/ida-series-1-hex-rays" rel="alternate" type="text/html" title="IDA series, part 1: the Hex-Rays decompiler" /><published>2017-06-20T03:07:40+02:00</published><updated>2017-06-20T03:07:40+02:00</updated><id>https://qmemcpy.io/post/ida-series-1-hex-rays</id><content type="html" xml:base="https://qmemcpy.io/post/ida-series-1-hex-rays">&lt;h4 id=&quot;whats-this-about&quot;&gt;What’s this about?&lt;/h4&gt;
 
 &lt;p&gt;In what I call the &lt;em&gt;IDA series&lt;/em&gt;, I will be explaining a bunch of interesting and useful stuff I’ve discovered about the Interactive Disassembler, IDA Pro.&lt;/p&gt;
 
@@ -1130,13 +1130,13 @@ or by marking the entire segment as read-write.&lt;/p&gt;
 &lt;div class=&quot;footnotes&quot;&gt;
   &lt;ol&gt;
     &lt;li id=&quot;fn:1&quot;&gt;
-      &lt;p&gt;stolen from &lt;a href=&quot;https://www.hex-rays.com/products/ida/support/book.shtml&quot;&gt;here&lt;/a&gt;&amp;nbsp;&lt;a href=&quot;#fnref:1&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
+      &lt;p&gt;stolen from &lt;a href=&quot;https://www.hex-rays.com/products/ida/support/book.shtml&quot;&gt;here&lt;/a&gt; &lt;a href=&quot;#fnref:1&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
     &lt;/li&gt;
     &lt;li id=&quot;fn:2&quot;&gt;
-      &lt;p&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;volatile&lt;/code&gt; is not strictly the inverse of &lt;code class=&quot;highlighter-rouge&quot;&gt;const&lt;/code&gt;, but in this case, it is&amp;nbsp;&lt;a href=&quot;#fnref:2&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
+      &lt;p&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;volatile&lt;/code&gt; is not strictly the inverse of &lt;code class=&quot;highlighter-rouge&quot;&gt;const&lt;/code&gt;, but in this case, it is &lt;a href=&quot;#fnref:2&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
     &lt;/li&gt;
   &lt;/ol&gt;
-&lt;/div&gt;</content><summary type="html">What’s this about?
+&lt;/div&gt;</content><author><name>qmempcy</name></author><summary type="html">What’s this about?
 
 In what I call the IDA series, I will be explaining a bunch of interesting and useful stuff I’ve discovered about the Interactive Disassembler, IDA Pro.
 
@@ -1249,10 +1249,10 @@ If you want to leave a comment, please do it on reddit or hacker news.
 
   
     
-      stolen from here&amp;nbsp;&amp;#8617;
+      stolen from here &amp;#8617;
     
     
-      volatile is not strictly the inverse of const, but in this case, it is&amp;nbsp;&amp;#8617;</summary></entry><entry><title type="html">Inside the Windows Kernel: who updates SharedUserData?</title><link href="https://qmemcpy.github.io/post/who-updates-shareduserdata" rel="alternate" type="text/html" title="Inside the Windows Kernel: who updates SharedUserData?" /><published>2017-05-24T03:07:40+02:00</published><updated>2017-05-24T03:07:40+02:00</updated><id>https://qmemcpy.github.io/post/who-updates-shareduserdata</id><content type="html" xml:base="https://qmemcpy.github.io/post/who-updates-shareduserdata">&lt;p&gt;As you &lt;a href=&quot;http://uninformed.org/index.cgi?v=2&amp;amp;a=2&amp;amp;p=15&quot;&gt;might know&lt;/a&gt;, the SharedUserData structure is present in all Windows NT+ versions, and is always at the same static offset 0x7FFE0000.
+      volatile is not strictly the inverse of const, but in this case, it is &amp;#8617;</summary></entry><entry><title type="html">Inside the Windows Kernel: who updates SharedUserData?</title><link href="https://qmemcpy.io/post/who-updates-shareduserdata" rel="alternate" type="text/html" title="Inside the Windows Kernel: who updates SharedUserData?" /><published>2017-05-24T03:07:40+02:00</published><updated>2017-05-24T03:07:40+02:00</updated><id>https://qmemcpy.io/post/who-updates-shareduserdata</id><content type="html" xml:base="https://qmemcpy.io/post/who-updates-shareduserdata">&lt;p&gt;As you &lt;a href=&quot;http://uninformed.org/index.cgi?v=2&amp;amp;a=2&amp;amp;p=15&quot;&gt;might know&lt;/a&gt;, the SharedUserData structure is present in all Windows NT+ versions, and is always at the same static offset 0x7FFE0000.
 Its purpose is to provide a bunch of interesting data to all the processes, without forcing them to do an expensive syscall.&lt;/p&gt;
 
 &lt;p&gt;You can find the offset in WinDbg like so:&lt;/p&gt;
@@ -1460,7 +1460,7 @@ nt!KeUpdateSystemTime+0x9e:
 
 &lt;hr /&gt;
 
-&lt;p&gt;&lt;strong&gt;Got this far?&lt;/strong&gt; You might want to check out the discussion at &lt;a href=&quot;https://www.reddit.com/r/ReverseEngineering/comments/6d5akq/who_updates_shareduserdata/&quot;&gt;reddit&lt;/a&gt; or &lt;a href=&quot;https://news.ycombinator.com/item?id=14413758&quot;&gt;hacker news&lt;/a&gt;.&lt;/p&gt;</content><summary type="html">As you might know, the SharedUserData structure is present in all Windows NT+ versions, and is always at the same static offset 0x7FFE0000.
+&lt;p&gt;&lt;strong&gt;Got this far?&lt;/strong&gt; You might want to check out the discussion at &lt;a href=&quot;https://www.reddit.com/r/ReverseEngineering/comments/6d5akq/who_updates_shareduserdata/&quot;&gt;reddit&lt;/a&gt; or &lt;a href=&quot;https://news.ycombinator.com/item?id=14413758&quot;&gt;hacker news&lt;/a&gt;.&lt;/p&gt;</content><author><name>qmempcy</name></author><summary type="html">As you might know, the SharedUserData structure is present in all Windows NT+ versions, and is always at the same static offset 0x7FFE0000.
 Its purpose is to provide a bunch of interesting data to all the processes, without forcing them to do an expensive syscall.
 
 You can find the offset in WinDbg like so:
