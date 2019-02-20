@@ -30,7 +30,7 @@
 &lt;/code&gt;&lt;/pre&gt;
 &lt;/div&gt;
 
-&lt;p&gt;&lt;em&gt;(notice that Python’s &lt;code class=&quot;highlighter-rouge&quot;&gt;.find()&lt;/code&gt; returns the index at which the character is found, or &lt;code class=&quot;highlighter-rouge&quot;&gt;-1&lt;/code&gt; if it isn’t, like the &lt;code class=&quot;highlighter-rouge&quot;&gt;indexOf&lt;/code&gt; in other languages)&lt;/em&gt;&lt;/p&gt;
+&lt;p&gt;&lt;em&gt;(notice that Python’s &lt;code class=&quot;highlighter-rouge&quot;&gt;.find()&lt;/code&gt; returns the index at which the character is found, or &lt;code class=&quot;highlighter-rouge&quot;&gt;-1&lt;/code&gt; if it isn’t, like &lt;code class=&quot;highlighter-rouge&quot;&gt;indexOf&lt;/code&gt; does in other languages)&lt;/em&gt;&lt;/p&gt;
 
 &lt;p&gt;Find a 9-letter string of characters such that &lt;code class=&quot;highlighter-rouge&quot;&gt;hash(string)&lt;/code&gt; is &lt;code class=&quot;highlighter-rouge&quot;&gt;945924806726376&lt;/code&gt;, where &lt;code class=&quot;highlighter-rouge&quot;&gt;string&lt;/code&gt; can only contain letters from &lt;code class=&quot;highlighter-rouge&quot;&gt;acdegilmnoprstuw&lt;/code&gt;.&lt;/p&gt;
 

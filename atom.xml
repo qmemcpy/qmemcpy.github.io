@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?><?xml-stylesheet type="text/xml" href="https://qmemcpy.io/feed.xslt.xml"?><feed xmlns="http://www.w3.org/2005/Atom"><generator uri="http://jekyllrb.com" version="3.4.0">Jekyll</generator><link href="https://qmemcpy.io/atom.xml" rel="self" type="application/atom+xml" /><link href="https://qmemcpy.io/" rel="alternate" type="text/html" /><updated>2019-02-20T20:18:54+01:00</updated><id>https://qmemcpy.io//</id><title type="html">qmemcpy - random bits of reverse engineering</title><subtitle>A blog focused on reverse engineering: malware, CTFs, Windows (kernel) and other random stuff I happen to be interested in.</subtitle><author><name>qmempcy</name></author><entry><title type="html">Cracking a weak hash function 101</title><link href="https://qmemcpy.io/post/cracking-a-weak-hash-function" rel="alternate" type="text/html" title="Cracking a weak hash function 101" /><published>2019-02-20T00:40:40+01:00</published><updated>2019-02-20T00:40:40+01:00</updated><id>https://qmemcpy.io/post/cracking-a-weak-hash-function</id><content type="html" xml:base="https://qmemcpy.io/post/cracking-a-weak-hash-function">&lt;h1 id=&quot;background&quot;&gt;Background&lt;/h1&gt;
+<?xml version="1.0" encoding="utf-8"?><?xml-stylesheet type="text/xml" href="https://qmemcpy.io/feed.xslt.xml"?><feed xmlns="http://www.w3.org/2005/Atom"><generator uri="http://jekyllrb.com" version="3.4.0">Jekyll</generator><link href="https://qmemcpy.io/atom.xml" rel="self" type="application/atom+xml" /><link href="https://qmemcpy.io/" rel="alternate" type="text/html" /><updated>2019-02-20T20:20:27+01:00</updated><id>https://qmemcpy.io//</id><title type="html">qmemcpy - random bits of reverse engineering</title><subtitle>A blog focused on reverse engineering: malware, CTFs, Windows (kernel) and other random stuff I happen to be interested in.</subtitle><author><name>qmempcy</name></author><entry><title type="html">Cracking a weak hash function 101</title><link href="https://qmemcpy.io/post/cracking-a-weak-hash-function" rel="alternate" type="text/html" title="Cracking a weak hash function 101" /><published>2019-02-20T00:40:40+01:00</published><updated>2019-02-20T00:40:40+01:00</updated><id>https://qmemcpy.io/post/cracking-a-weak-hash-function</id><content type="html" xml:base="https://qmemcpy.io/post/cracking-a-weak-hash-function">&lt;h1 id=&quot;background&quot;&gt;Background&lt;/h1&gt;
 
 &lt;p&gt;A few years ago, I found a job offer from a software company that required you to break a hash function in order to be able to apply. The hash function itself was pretty weak, and the constraints were sensible enough for the requirement to make sense. Since then, the company has taken the offer down, and as far as I know, they do not use the same exercise anymore, which is why I decided to post my solution.&lt;/p&gt;
 
@@ -18,7 +18,7 @@
 &lt;/code&gt;&lt;/pre&gt;
 &lt;/div&gt;
 
-&lt;p&gt;&lt;em&gt;(notice that Python’s &lt;code class=&quot;highlighter-rouge&quot;&gt;.find()&lt;/code&gt; returns the index at which the character is found, or &lt;code class=&quot;highlighter-rouge&quot;&gt;-1&lt;/code&gt; if it isn’t, like the &lt;code class=&quot;highlighter-rouge&quot;&gt;indexOf&lt;/code&gt; in other languages)&lt;/em&gt;&lt;/p&gt;
+&lt;p&gt;&lt;em&gt;(notice that Python’s &lt;code class=&quot;highlighter-rouge&quot;&gt;.find()&lt;/code&gt; returns the index at which the character is found, or &lt;code class=&quot;highlighter-rouge&quot;&gt;-1&lt;/code&gt; if it isn’t, like &lt;code class=&quot;highlighter-rouge&quot;&gt;indexOf&lt;/code&gt; does in other languages)&lt;/em&gt;&lt;/p&gt;
 
 &lt;p&gt;Find a 9-letter string of characters such that &lt;code class=&quot;highlighter-rouge&quot;&gt;hash(string)&lt;/code&gt; is &lt;code class=&quot;highlighter-rouge&quot;&gt;945924806726376&lt;/code&gt;, where &lt;code class=&quot;highlighter-rouge&quot;&gt;string&lt;/code&gt; can only contain letters from &lt;code class=&quot;highlighter-rouge&quot;&gt;acdegilmnoprstuw&lt;/code&gt;.&lt;/p&gt;
 
@@ -81,7 +81,7 @@ def hash(s):
 
 
 
-(notice that Python’s .find() returns the index at which the character is found, or -1 if it isn’t, like the indexOf in other languages)
+(notice that Python’s .find() returns the index at which the character is found, or -1 if it isn’t, like indexOf does in other languages)
 
 Find a 9-letter string of characters such that hash(string) is 945924806726376, where string can only contain letters from acdegilmnoprstuw.
 
