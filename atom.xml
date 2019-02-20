@@ -1,4 +1,122 @@
-<?xml version="1.0" encoding="utf-8"?><?xml-stylesheet type="text/xml" href="https://qmemcpy.io/feed.xslt.xml"?><feed xmlns="http://www.w3.org/2005/Atom"><generator uri="http://jekyllrb.com" version="3.4.0">Jekyll</generator><link href="https://qmemcpy.io/atom.xml" rel="self" type="application/atom+xml" /><link href="https://qmemcpy.io/" rel="alternate" type="text/html" /><updated>2019-02-20T20:00:14+01:00</updated><id>https://qmemcpy.io//</id><title type="html">qmemcpy - random bits of reverse engineering</title><subtitle>A blog focused on reverse engineering: malware, CTFs, Windows (kernel) and other random stuff I happen to be interested in.</subtitle><author><name>qmempcy</name></author><entry><title type="html">Reverse engineering malware: TrickBot (part 3 - core)</title><link href="https://qmemcpy.io/post/reverse-engineering-malware-trickbot-part-3-core" rel="alternate" type="text/html" title="Reverse engineering malware: TrickBot (part 3 - core)" /><published>2017-10-09T02:00:00+02:00</published><updated>2017-10-09T02:00:00+02:00</updated><id>https://qmemcpy.io/post/reverse-engineering-malware-trickbot-part-3-core</id><content type="html" xml:base="https://qmemcpy.io/post/reverse-engineering-malware-trickbot-part-3-core">&lt;p&gt;In my &lt;a href=&quot;/post/reverse-engineering-malware-trickbot-part-2-loader&quot;&gt;previous post&lt;/a&gt;, I explained how to dump the TrickBot core.&lt;/p&gt;
+<?xml version="1.0" encoding="utf-8"?><?xml-stylesheet type="text/xml" href="https://qmemcpy.io/feed.xslt.xml"?><feed xmlns="http://www.w3.org/2005/Atom"><generator uri="http://jekyllrb.com" version="3.4.0">Jekyll</generator><link href="https://qmemcpy.io/atom.xml" rel="self" type="application/atom+xml" /><link href="https://qmemcpy.io/" rel="alternate" type="text/html" /><updated>2019-02-20T20:01:01+01:00</updated><id>https://qmemcpy.io//</id><title type="html">qmemcpy - random bits of reverse engineering</title><subtitle>A blog focused on reverse engineering: malware, CTFs, Windows (kernel) and other random stuff I happen to be interested in.</subtitle><author><name>qmempcy</name></author><entry><title type="html">Cracking a weak hash function 101</title><link href="https://qmemcpy.io/post/cracking-a-weak-hash-function" rel="alternate" type="text/html" title="Cracking a weak hash function 101" /><published>2019-02-20T00:40:40+01:00</published><updated>2019-02-20T00:40:40+01:00</updated><id>https://qmemcpy.io/post/cracking-a-weak-hash-function</id><content type="html" xml:base="https://qmemcpy.io/post/cracking-a-weak-hash-function">&lt;h1 id=&quot;background&quot;&gt;Background&lt;/h1&gt;
+
+&lt;p&gt;A few years ago, I found a job offer from a software company that required you to break a hash function in order to be able to apply. The hash function itself was pretty weak, and the constraints were sensible enough for the requirement to make sense. Since then, the company has taken the offer down, and as far as I know, they do not use the same exercise anymore, which is why I decided to post my solution.&lt;/p&gt;
+
+&lt;h1 id=&quot;the-task&quot;&gt;The task&lt;/h1&gt;
+
+&lt;p&gt;I cannot find an archive page of the job offer description, so I’ll paraphrase from memory.&lt;/p&gt;
+
+&lt;p&gt;Given this hash function:&lt;/p&gt;
+
+&lt;div class=&quot;language-python highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;k&quot;&gt;def&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;hash&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;s&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;):&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;h&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;7&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;letters&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;acdegilmnoprstuw&quot;&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;for&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;c&lt;/span&gt; &lt;span class=&quot;ow&quot;&gt;in&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;s&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;h&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;h&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;37&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;letters&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;find&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;c&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+    
+    &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;h&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+&lt;p&gt;Find a 9-letter string of characters such that &lt;code class=&quot;highlighter-rouge&quot;&gt;hash(string)&lt;/code&gt; is &lt;code class=&quot;highlighter-rouge&quot;&gt;945924806726376&lt;/code&gt;, where &lt;code class=&quot;highlighter-rouge&quot;&gt;string&lt;/code&gt; can only contain letters from &lt;code class=&quot;highlighter-rouge&quot;&gt;acdegilmnoprstuw&lt;/code&gt;.&lt;/p&gt;
+
+&lt;h1 id=&quot;the-weakness&quot;&gt;The weakness&lt;/h1&gt;
+
+&lt;p&gt;For this explanation, I will ask you to assume that I’m a 5 year old. No advanced math here, just pure logic that anybody can understand and follow.&lt;/p&gt;
+
+&lt;p&gt;If you look at the hash closely, you will notice that it starts with a fixed value &lt;code class=&quot;highlighter-rouge&quot;&gt;7&lt;/code&gt;, and that it then multiplies that value by &lt;code class=&quot;highlighter-rouge&quot;&gt;37&lt;/code&gt; and adds some (negligible for now) offset. This means that, for every character there is in the string to be hashed, the value of &lt;code class=&quot;highlighter-rouge&quot;&gt;h&lt;/code&gt; will be multiplied by &lt;code class=&quot;highlighter-rouge&quot;&gt;37&lt;/code&gt; and some negligible value, up to &lt;code class=&quot;highlighter-rouge&quot;&gt;15&lt;/code&gt;, will be added.&lt;/p&gt;
+
+&lt;p&gt;With this information alone, you know that, as long as the length of the input string increases, the resulting hash will also increase, i.e. the value of the hash is linearly proportional (somewhat) to the input string. We do know that the length will be &lt;code class=&quot;highlighter-rouge&quot;&gt;9&lt;/code&gt;, which means there will be a fixed amount of iterations in &lt;code class=&quot;highlighter-rouge&quot;&gt;hash()&lt;/code&gt;’s loop.&lt;/p&gt;
+
+&lt;p&gt;The value that’s added after multiplying is simply an offset, a value from &lt;code class=&quot;highlighter-rouge&quot;&gt;0&lt;/code&gt; to &lt;code class=&quot;highlighter-rouge&quot;&gt;15&lt;/code&gt;, and that’s the only thing that can change between different possible values to be fed into the &lt;code class=&quot;highlighter-rouge&quot;&gt;hash()&lt;/code&gt; function. That is, the smallest possible value we can get with these constraints is &lt;code class=&quot;highlighter-rouge&quot;&gt;hash(&quot;aaaaaaaaa&quot;) -&amp;gt; 909732178565539&lt;/code&gt;, and the biggest possible value is &lt;code class=&quot;highlighter-rouge&quot;&gt;hash(&quot;wwwwwwwww&quot;) -&amp;gt; 963882903480154&lt;/code&gt;.&lt;/p&gt;
+
+&lt;p&gt;A necessary consequence of all this is that &lt;code class=&quot;highlighter-rouge&quot;&gt;hash(&quot;bbbbbbbbb&quot;) &amp;lt; hash(&quot;bbbbbbbbc&quot;) &amp;lt; hash(&quot;bbbbbbbbd&quot;)&lt;/code&gt;. Another thing is that, because of the cumulative design of the hash, characters at the end will produce much smaller differences than characters at the beginning; that is, &lt;code class=&quot;highlighter-rouge&quot;&gt;hash(&quot;wwwwwwwww&quot;) - hash(&quot;wwwwwwwwa&quot;)&lt;/code&gt; will produce a much smaller difference than &lt;code class=&quot;highlighter-rouge&quot;&gt;hash(&quot;wwwwwwwww&quot;) - hash(&quot;awwwwwwww&quot;)&lt;/code&gt; will:&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&amp;gt;&amp;gt;&amp;gt; hash(&quot;wwwwwwwww&quot;) - hash(&quot;wwwwwwwwa&quot;)
+15L
+&amp;gt;&amp;gt;&amp;gt; hash(&quot;wwwwwwwww&quot;) - hash(&quot;awwwwwwww&quot;)
+52687191808815L
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;p&gt;With this knowledge, we now know that, as long as the string “increases” (from &lt;code class=&quot;highlighter-rouge&quot;&gt;aaaaaaaaa&lt;/code&gt; to &lt;code class=&quot;highlighter-rouge&quot;&gt;wwwwwwwww&lt;/code&gt;), the value of the hash will increase as well, linearly. Also, each character has less and less impact on the final value of the hash as we progress over the string - i.e. the first character will make the biggest difference in value, while the last will make the least.&lt;/p&gt;
+
+&lt;p&gt;Therefore, the only thing necessary for this task is to progressively increase characters at the start of the string, and as soon as we &lt;em&gt;surpass&lt;/em&gt; that value, we got the proper character (which is the &lt;em&gt;previous&lt;/em&gt; one, as the further characters in the string will always add some numerical value to the final hash).&lt;/p&gt;
+
+&lt;h1 id=&quot;the-solution&quot;&gt;The solution&lt;/h1&gt;
+
+&lt;p&gt;Of course, the code is left as an exercise to the reader. However, the necessary steps can be very easily reproduced from this output:&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;uaaaaaaaa: too big (958906890920433) # first char is 'u'? no - too big, try something that would make the hash smaller
+taaaaaaaa: too big (955394411466512) # 't' makes the hash smaller, but it is still too big
+...
+paaaaaaaa: too small (944856973104749) # the first letter is 'p' - move on to the next, because now the hash is too small
+puaaaaaaa: too big (946186019384611)
+...
+praaaaaaa: too small (945901223753212) # the next one is 'r' - move on to the next
+pruaaaaaa: too big (945937143922938)
+...
+proaaaaaa: too small (945924315290893) # next one is 'o' - move on to the next
+...
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;</content><author><name>qmempcy</name></author><summary type="html">Background
+
+A few years ago, I found a job offer from a software company that required you to break a hash function in order to be able to apply. The hash function itself was pretty weak, and the constraints were sensible enough for the requirement to make sense. Since then, the company has taken the offer down, and as far as I know, they do not use the same exercise anymore, which is why I decided to post my solution.
+
+The task
+
+I cannot find an archive page of the job offer description, so I’ll paraphrase from memory.
+
+Given this hash function:
+
+def hash(s):
+    h = 7
+    letters = &quot;acdegilmnoprstuw&quot;
+    for c in s:
+        h = h * 37 + letters.find(c)
+    
+    return h
+
+
+Find a 9-letter string of characters such that hash(string) is 945924806726376, where string can only contain letters from acdegilmnoprstuw.
+
+The weakness
+
+For this explanation, I will ask you to assume that I’m a 5 year old. No advanced math here, just pure logic that anybody can understand and follow.
+
+If you look at the hash closely, you will notice that it starts with a fixed value 7, and that it then multiplies that value by 37 and adds some (negligible for now) offset. This means that, for every character there is in the string to be hashed, the value of h will be multiplied by 37 and some negligible value, up to 15, will be added.
+
+With this information alone, you know that, as long as the length of the input string increases, the resulting hash will also increase, i.e. the value of the hash is linearly proportional (somewhat) to the input string. We do know that the length will be 9, which means there will be a fixed amount of iterations in hash()’s loop.
+
+The value that’s added after multiplying is simply an offset, a value from 0 to 15, and that’s the only thing that can change between different possible values to be fed into the hash() function. That is, the smallest possible value we can get with these constraints is hash(&quot;aaaaaaaaa&quot;) -&amp;gt; 909732178565539, and the biggest possible value is hash(&quot;wwwwwwwww&quot;) -&amp;gt; 963882903480154.
+
+A necessary consequence of all this is that hash(&quot;bbbbbbbbb&quot;) &amp;lt; hash(&quot;bbbbbbbbc&quot;) &amp;lt; hash(&quot;bbbbbbbbd&quot;). Another thing is that, because of the cumulative design of the hash, characters at the end will produce much smaller differences than characters at the beginning; that is, hash(&quot;wwwwwwwww&quot;) - hash(&quot;wwwwwwwwa&quot;) will produce a much smaller difference than hash(&quot;wwwwwwwww&quot;) - hash(&quot;awwwwwwww&quot;) will:
+
+&amp;gt;&amp;gt;&amp;gt; hash(&quot;wwwwwwwww&quot;) - hash(&quot;wwwwwwwwa&quot;)
+15L
+&amp;gt;&amp;gt;&amp;gt; hash(&quot;wwwwwwwww&quot;) - hash(&quot;awwwwwwww&quot;)
+52687191808815L
+
+
+
+With this knowledge, we now know that, as long as the string “increases” (from aaaaaaaaa to wwwwwwwww), the value of the hash will increase as well, linearly. Also, each character has less and less impact on the final value of the hash as we progress over the string - i.e. the first character will make the biggest difference in value, while the last will make the least.
+
+Therefore, the only thing necessary for this task is to progressively increase characters at the start of the string, and as soon as we surpass that value, we got the proper character (which is the previous one, as the further characters in the string will always add some numerical value to the final hash).
+
+The solution
+
+Of course, the code is left as an exercise to the reader. However, the necessary steps can be very easily reproduced from this output:
+
+uaaaaaaaa: too big (958906890920433) # first char is 'u'? no - too big, try something that would make the hash smaller
+taaaaaaaa: too big (955394411466512) # 't' makes the hash smaller, but it is still too big
+...
+paaaaaaaa: too small (944856973104749) # the first letter is 'p' - move on to the next, because now the hash is too small
+puaaaaaaa: too big (946186019384611)
+...
+praaaaaaa: too small (945901223753212) # the next one is 'r' - move on to the next
+pruaaaaaa: too big (945937143922938)
+...
+proaaaaaa: too small (945924315290893) # next one is 'o' - move on to the next
+...</summary></entry><entry><title type="html">Reverse engineering malware: TrickBot (part 3 - core)</title><link href="https://qmemcpy.io/post/reverse-engineering-malware-trickbot-part-3-core" rel="alternate" type="text/html" title="Reverse engineering malware: TrickBot (part 3 - core)" /><published>2017-10-09T02:00:00+02:00</published><updated>2017-10-09T02:00:00+02:00</updated><id>https://qmemcpy.io/post/reverse-engineering-malware-trickbot-part-3-core</id><content type="html" xml:base="https://qmemcpy.io/post/reverse-engineering-malware-trickbot-part-3-core">&lt;p&gt;In my &lt;a href=&quot;/post/reverse-engineering-malware-trickbot-part-2-loader&quot;&gt;previous post&lt;/a&gt;, I explained how to dump the TrickBot core.&lt;/p&gt;
 
 &lt;p&gt;In this one, I will show a bunch of tricks that will make the analysis of said core easier. This is &lt;em&gt;not&lt;/em&gt; a full malware analysis - I don’t intend
 to teach you malware reverse engineering, but rather, I’m aiming to make your reverse-engineering process less cumbersome and of higher quality.&lt;/p&gt;

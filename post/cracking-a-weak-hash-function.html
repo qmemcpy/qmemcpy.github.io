@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+
+	<head>
+		<meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+
+	<title>Cracking a weak hash function 101</title>
+
+
+<meta name="twitter:card" content="summary" />
+<meta name="twitter:site" content="@qmemcpy" />
+<meta name="twitter:title" content="Cracking a weak hash function 101" />
+<meta name="twitter:description" content="BackgroundA few years ago, I found a job offer from a software company that required you to break a hash function in order to be able to apply. The hash function itself was pretty weak, and the con...">
+
+<meta name="description" content="BackgroundA few years ago, I found a job offer from a software company that required you to break a hash function in order to be able to apply. The hash func...">
+
+
+	<meta name="google-site-verification" content="epFgX0s_0RM3CdjwFcsewfXzPov2g8s9ZBOLyaIUH-o">
+
+
+<link rel="icon" href="/assets/favicon.png">
+<link rel="apple-touch-icon" href="/assets/touch-icon.png">
+<link href="https://fonts.googleapis.com/css?family=Karla" rel="stylesheet">
+<link rel="stylesheet" href="/assets/core.css">
+<link rel="canonical" href="/post/cracking-a-weak-hash-function">
+<link rel="alternate" type="application/atom+xml" title="qmemcpy - random bits of reverse engineering" href="/feed.xml" />
+
+
+
+
+
+<!-- Begin Jekyll SEO tag v2.3.0 -->
+<meta property="og:title" content="Cracking a weak hash function 101" />
+<meta name="author" content="qmempcy" />
+<meta property="og:locale" content="en_US" />
+<meta name="description" content="Background A few years ago, I found a job offer from a software company that required you to break a hash function in order to be able to apply. The hash function itself was pretty weak, and the constraints were sensible enough for the requirement to make sense. Since then, the company has taken the offer down, and as far as I know, they do not use the same exercise anymore, which is why I decided to post my solution. The task I cannot find an archive page of the job offer description, so I’ll paraphrase from memory. Given this hash function: def hash(s): h = 7 letters = &quot;acdegilmnoprstuw&quot; for c in s: h = h * 37 + letters.find(c) return h Find a 9-letter string of characters such that hash(string) is 945924806726376, where string can only contain letters from acdegilmnoprstuw. The weakness For this explanation, I will ask you to assume that I’m a 5 year old. No advanced math here, just pure logic that anybody can understand and follow. If you look at the hash closely, you will notice that it starts with a fixed value 7, and that it then multiplies that value by 37 and adds some (negligible for now) offset. This means that, for every character there is in the string to be hashed, the value of h will be multiplied by 37 and some negligible value, up to 15, will be added. With this information alone, you know that, as long as the length of the input string increases, the resulting hash will also increase, i.e. the value of the hash is linearly proportional (somewhat) to the input string. We do know that the length will be 9, which means there will be a fixed amount of iterations in hash()’s loop. The value that’s added after multiplying is simply an offset, a value from 0 to 15, and that’s the only thing that can change between different possible values to be fed into the hash() function. That is, the smallest possible value we can get with these constraints is hash(&quot;aaaaaaaaa&quot;) -&gt; 909732178565539, and the biggest possible value is hash(&quot;wwwwwwwww&quot;) -&gt; 963882903480154. A necessary consequence of all this is that hash(&quot;bbbbbbbbb&quot;) &lt; hash(&quot;bbbbbbbbc&quot;) &lt; hash(&quot;bbbbbbbbd&quot;). Another thing is that, because of the cumulative design of the hash, characters at the end will produce much smaller differences than characters at the beginning; that is, hash(&quot;wwwwwwwww&quot;) - hash(&quot;wwwwwwwwa&quot;) will produce a much smaller difference than hash(&quot;wwwwwwwww&quot;) - hash(&quot;awwwwwwww&quot;) will: &gt;&gt;&gt; hash(&quot;wwwwwwwww&quot;) - hash(&quot;wwwwwwwwa&quot;) 15L &gt;&gt;&gt; hash(&quot;wwwwwwwww&quot;) - hash(&quot;awwwwwwww&quot;) 52687191808815L With this knowledge, we now know that, as long as the string “increases” (from aaaaaaaaa to wwwwwwwww), the value of the hash will increase as well, linearly. Also, each character has less and less impact on the final value of the hash as we progress over the string - i.e. the first character will make the biggest difference in value, while the last will make the least. Therefore, the only thing necessary for this task is to progressively increase characters at the start of the string, and as soon as we surpass that value, we got the proper character (which is the previous one, as the further characters in the string will always add some numerical value to the final hash). The solution Of course, the code is left as an exercise to the reader. However, the necessary steps can be very easily reproduced from this output: uaaaaaaaa: too big (958906890920433) # first char is &#39;u&#39;? no - too big, try something that would make the hash smaller taaaaaaaa: too big (955394411466512) # &#39;t&#39; makes the hash smaller, but it is still too big ... paaaaaaaa: too small (944856973104749) # the first letter is &#39;p&#39; - move on to the next, because now the hash is too small puaaaaaaa: too big (946186019384611) ... praaaaaaa: too small (945901223753212) # the next one is &#39;r&#39; - move on to the next pruaaaaaa: too big (945937143922938) ... proaaaaaa: too small (945924315290893) # next one is &#39;o&#39; - move on to the next ..." />
+<meta property="og:description" content="Background A few years ago, I found a job offer from a software company that required you to break a hash function in order to be able to apply. The hash function itself was pretty weak, and the constraints were sensible enough for the requirement to make sense. Since then, the company has taken the offer down, and as far as I know, they do not use the same exercise anymore, which is why I decided to post my solution. The task I cannot find an archive page of the job offer description, so I’ll paraphrase from memory. Given this hash function: def hash(s): h = 7 letters = &quot;acdegilmnoprstuw&quot; for c in s: h = h * 37 + letters.find(c) return h Find a 9-letter string of characters such that hash(string) is 945924806726376, where string can only contain letters from acdegilmnoprstuw. The weakness For this explanation, I will ask you to assume that I’m a 5 year old. No advanced math here, just pure logic that anybody can understand and follow. If you look at the hash closely, you will notice that it starts with a fixed value 7, and that it then multiplies that value by 37 and adds some (negligible for now) offset. This means that, for every character there is in the string to be hashed, the value of h will be multiplied by 37 and some negligible value, up to 15, will be added. With this information alone, you know that, as long as the length of the input string increases, the resulting hash will also increase, i.e. the value of the hash is linearly proportional (somewhat) to the input string. We do know that the length will be 9, which means there will be a fixed amount of iterations in hash()’s loop. The value that’s added after multiplying is simply an offset, a value from 0 to 15, and that’s the only thing that can change between different possible values to be fed into the hash() function. That is, the smallest possible value we can get with these constraints is hash(&quot;aaaaaaaaa&quot;) -&gt; 909732178565539, and the biggest possible value is hash(&quot;wwwwwwwww&quot;) -&gt; 963882903480154. A necessary consequence of all this is that hash(&quot;bbbbbbbbb&quot;) &lt; hash(&quot;bbbbbbbbc&quot;) &lt; hash(&quot;bbbbbbbbd&quot;). Another thing is that, because of the cumulative design of the hash, characters at the end will produce much smaller differences than characters at the beginning; that is, hash(&quot;wwwwwwwww&quot;) - hash(&quot;wwwwwwwwa&quot;) will produce a much smaller difference than hash(&quot;wwwwwwwww&quot;) - hash(&quot;awwwwwwww&quot;) will: &gt;&gt;&gt; hash(&quot;wwwwwwwww&quot;) - hash(&quot;wwwwwwwwa&quot;) 15L &gt;&gt;&gt; hash(&quot;wwwwwwwww&quot;) - hash(&quot;awwwwwwww&quot;) 52687191808815L With this knowledge, we now know that, as long as the string “increases” (from aaaaaaaaa to wwwwwwwww), the value of the hash will increase as well, linearly. Also, each character has less and less impact on the final value of the hash as we progress over the string - i.e. the first character will make the biggest difference in value, while the last will make the least. Therefore, the only thing necessary for this task is to progressively increase characters at the start of the string, and as soon as we surpass that value, we got the proper character (which is the previous one, as the further characters in the string will always add some numerical value to the final hash). The solution Of course, the code is left as an exercise to the reader. However, the necessary steps can be very easily reproduced from this output: uaaaaaaaa: too big (958906890920433) # first char is &#39;u&#39;? no - too big, try something that would make the hash smaller taaaaaaaa: too big (955394411466512) # &#39;t&#39; makes the hash smaller, but it is still too big ... paaaaaaaa: too small (944856973104749) # the first letter is &#39;p&#39; - move on to the next, because now the hash is too small puaaaaaaa: too big (946186019384611) ... praaaaaaa: too small (945901223753212) # the next one is &#39;r&#39; - move on to the next pruaaaaaa: too big (945937143922938) ... proaaaaaa: too small (945924315290893) # next one is &#39;o&#39; - move on to the next ..." />
+<link rel="canonical" href="https://qmemcpy.io/post/cracking-a-weak-hash-function" />
+<meta property="og:url" content="https://qmemcpy.io/post/cracking-a-weak-hash-function" />
+<meta property="og:site_name" content="qmemcpy - random bits of reverse engineering" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2019-02-20T00:40:40+01:00" />
+<meta name="twitter:card" content="summary" />
+<meta name="twitter:site" content="@qmemcpy" />
+<meta name="twitter:creator" content="@qmemcpy" />
+<script type="application/ld+json">
+{"name":null,"description":"Background A few years ago, I found a job offer from a software company that required you to break a hash function in order to be able to apply. The hash function itself was pretty weak, and the constraints were sensible enough for the requirement to make sense. Since then, the company has taken the offer down, and as far as I know, they do not use the same exercise anymore, which is why I decided to post my solution. The task I cannot find an archive page of the job offer description, so I’ll paraphrase from memory. Given this hash function: def hash(s): h = 7 letters = &quot;acdegilmnoprstuw&quot; for c in s: h = h * 37 + letters.find(c) return h Find a 9-letter string of characters such that hash(string) is 945924806726376, where string can only contain letters from acdegilmnoprstuw. The weakness For this explanation, I will ask you to assume that I’m a 5 year old. No advanced math here, just pure logic that anybody can understand and follow. If you look at the hash closely, you will notice that it starts with a fixed value 7, and that it then multiplies that value by 37 and adds some (negligible for now) offset. This means that, for every character there is in the string to be hashed, the value of h will be multiplied by 37 and some negligible value, up to 15, will be added. With this information alone, you know that, as long as the length of the input string increases, the resulting hash will also increase, i.e. the value of the hash is linearly proportional (somewhat) to the input string. We do know that the length will be 9, which means there will be a fixed amount of iterations in hash()’s loop. The value that’s added after multiplying is simply an offset, a value from 0 to 15, and that’s the only thing that can change between different possible values to be fed into the hash() function. That is, the smallest possible value we can get with these constraints is hash(&quot;aaaaaaaaa&quot;) -&gt; 909732178565539, and the biggest possible value is hash(&quot;wwwwwwwww&quot;) -&gt; 963882903480154. A necessary consequence of all this is that hash(&quot;bbbbbbbbb&quot;) &lt; hash(&quot;bbbbbbbbc&quot;) &lt; hash(&quot;bbbbbbbbd&quot;). Another thing is that, because of the cumulative design of the hash, characters at the end will produce much smaller differences than characters at the beginning; that is, hash(&quot;wwwwwwwww&quot;) - hash(&quot;wwwwwwwwa&quot;) will produce a much smaller difference than hash(&quot;wwwwwwwww&quot;) - hash(&quot;awwwwwwww&quot;) will: &gt;&gt;&gt; hash(&quot;wwwwwwwww&quot;) - hash(&quot;wwwwwwwwa&quot;) 15L &gt;&gt;&gt; hash(&quot;wwwwwwwww&quot;) - hash(&quot;awwwwwwww&quot;) 52687191808815L With this knowledge, we now know that, as long as the string “increases” (from aaaaaaaaa to wwwwwwwww), the value of the hash will increase as well, linearly. Also, each character has less and less impact on the final value of the hash as we progress over the string - i.e. the first character will make the biggest difference in value, while the last will make the least. Therefore, the only thing necessary for this task is to progressively increase characters at the start of the string, and as soon as we surpass that value, we got the proper character (which is the previous one, as the further characters in the string will always add some numerical value to the final hash). The solution Of course, the code is left as an exercise to the reader. However, the necessary steps can be very easily reproduced from this output: uaaaaaaaa: too big (958906890920433) # first char is &#39;u&#39;? no - too big, try something that would make the hash smaller taaaaaaaa: too big (955394411466512) # &#39;t&#39; makes the hash smaller, but it is still too big ... paaaaaaaa: too small (944856973104749) # the first letter is &#39;p&#39; - move on to the next, because now the hash is too small puaaaaaaa: too big (946186019384611) ... praaaaaaa: too small (945901223753212) # the next one is &#39;r&#39; - move on to the next pruaaaaaa: too big (945937143922938) ... proaaaaaa: too small (945924315290893) # next one is &#39;o&#39; - move on to the next ...","url":"https://qmemcpy.io/post/cracking-a-weak-hash-function","headline":"Cracking a weak hash function 101","dateModified":"2019-02-20T00:40:40+01:00","datePublished":"2019-02-20T00:40:40+01:00","sameAs":null,"@type":"BlogPosting","author":{"@type":"Person","name":"qmempcy"},"image":null,"publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://qmemcpy.io/assets/command_line.png"},"name":"qmempcy"},"mainEntityOfPage":{"@type":"WebPage","@id":"https://qmemcpy.io/post/cracking-a-weak-hash-function"},"@context":"http://schema.org"}</script>
+<!-- End Jekyll SEO tag -->
+
+
+
+	</head>
+
+	<body>
+
+		<aside class="logo">
+
+	
+	
+
+	<a href="/">
+		<img src="/assets/command_line.png" class="gravatar">
+	</a>
+
+</aside>
+
+
+		<main>
+			<article>
+
+	<div class="center">
+		<h1>Cracking a weak hash function 101</h1>
+		<time>February 20, 2019</time>
+	</div>
+
+	<div class="divider"></div>
+
+	<h1 id="background">Background</h1>
+
+<p>A few years ago, I found a job offer from a software company that required you to break a hash function in order to be able to apply. The hash function itself was pretty weak, and the constraints were sensible enough for the requirement to make sense. Since then, the company has taken the offer down, and as far as I know, they do not use the same exercise anymore, which is why I decided to post my solution.</p>
+
+<h1 id="the-task">The task</h1>
+
+<p>I cannot find an archive page of the job offer description, so I’ll paraphrase from memory.</p>
+
+<p>Given this hash function:</p>
+
+<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="k">def</span> <span class="nf">hash</span><span class="p">(</span><span class="n">s</span><span class="p">):</span>
+    <span class="n">h</span> <span class="o">=</span> <span class="mi">7</span>
+    <span class="n">letters</span> <span class="o">=</span> <span class="s">"acdegilmnoprstuw"</span>
+    <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">s</span><span class="p">:</span>
+        <span class="n">h</span> <span class="o">=</span> <span class="n">h</span> <span class="o">*</span> <span class="mi">37</span> <span class="o">+</span> <span class="n">letters</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="n">c</span><span class="p">)</span>
+    
+    <span class="k">return</span> <span class="n">h</span>
+</code></pre>
+</div>
+<p>Find a 9-letter string of characters such that <code class="highlighter-rouge">hash(string)</code> is <code class="highlighter-rouge">945924806726376</code>, where <code class="highlighter-rouge">string</code> can only contain letters from <code class="highlighter-rouge">acdegilmnoprstuw</code>.</p>
+
+<h1 id="the-weakness">The weakness</h1>
+
+<p>For this explanation, I will ask you to assume that I’m a 5 year old. No advanced math here, just pure logic that anybody can understand and follow.</p>
+
+<p>If you look at the hash closely, you will notice that it starts with a fixed value <code class="highlighter-rouge">7</code>, and that it then multiplies that value by <code class="highlighter-rouge">37</code> and adds some (negligible for now) offset. This means that, for every character there is in the string to be hashed, the value of <code class="highlighter-rouge">h</code> will be multiplied by <code class="highlighter-rouge">37</code> and some negligible value, up to <code class="highlighter-rouge">15</code>, will be added.</p>
+
+<p>With this information alone, you know that, as long as the length of the input string increases, the resulting hash will also increase, i.e. the value of the hash is linearly proportional (somewhat) to the input string. We do know that the length will be <code class="highlighter-rouge">9</code>, which means there will be a fixed amount of iterations in <code class="highlighter-rouge">hash()</code>’s loop.</p>
+
+<p>The value that’s added after multiplying is simply an offset, a value from <code class="highlighter-rouge">0</code> to <code class="highlighter-rouge">15</code>, and that’s the only thing that can change between different possible values to be fed into the <code class="highlighter-rouge">hash()</code> function. That is, the smallest possible value we can get with these constraints is <code class="highlighter-rouge">hash("aaaaaaaaa") -&gt; 909732178565539</code>, and the biggest possible value is <code class="highlighter-rouge">hash("wwwwwwwww") -&gt; 963882903480154</code>.</p>
+
+<p>A necessary consequence of all this is that <code class="highlighter-rouge">hash("bbbbbbbbb") &lt; hash("bbbbbbbbc") &lt; hash("bbbbbbbbd")</code>. Another thing is that, because of the cumulative design of the hash, characters at the end will produce much smaller differences than characters at the beginning; that is, <code class="highlighter-rouge">hash("wwwwwwwww") - hash("wwwwwwwwa")</code> will produce a much smaller difference than <code class="highlighter-rouge">hash("wwwwwwwww") - hash("awwwwwwww")</code> will:</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>&gt;&gt;&gt; hash("wwwwwwwww") - hash("wwwwwwwwa")
+15L
+&gt;&gt;&gt; hash("wwwwwwwww") - hash("awwwwwwww")
+52687191808815L
+</code></pre>
+</div>
+
+<p>With this knowledge, we now know that, as long as the string “increases” (from <code class="highlighter-rouge">aaaaaaaaa</code> to <code class="highlighter-rouge">wwwwwwwww</code>), the value of the hash will increase as well, linearly. Also, each character has less and less impact on the final value of the hash as we progress over the string - i.e. the first character will make the biggest difference in value, while the last will make the least.</p>
+
+<p>Therefore, the only thing necessary for this task is to progressively increase characters at the start of the string, and as soon as we <em>surpass</em> that value, we got the proper character (which is the <em>previous</em> one, as the further characters in the string will always add some numerical value to the final hash).</p>
+
+<h1 id="the-solution">The solution</h1>
+
+<p>Of course, the code is left as an exercise to the reader. However, the necessary steps can be very easily reproduced from this output:</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>uaaaaaaaa: too big (958906890920433) # first char is 'u'? no - too big, try something that would make the hash smaller
+taaaaaaaa: too big (955394411466512) # 't' makes the hash smaller, but it is still too big
+...
+paaaaaaaa: too small (944856973104749) # the first letter is 'p' - move on to the next, because now the hash is too small
+puaaaaaaa: too big (946186019384611)
+...
+praaaaaaa: too small (945901223753212) # the next one is 'r' - move on to the next
+pruaaaaaa: too big (945937143922938)
+...
+proaaaaaa: too small (945924315290893) # next one is 'o' - move on to the next
+...
+</code></pre>
+</div>
+
+
+</article>
+
+<div class="page-navigation">
+	
+		<a class="home" href="/" title="Back to Homepage">Home</a>
+  
+		<span> &middot; </span>
+    <a class="prev" href="/post/reverse-engineering-malware-trickbot-part-3-core" title="PREV: Reverse engineering malware: TrickBot (part 3 - core)">&gt;&gt;</a>
+  
+</div>
+
+		</main>
+
+		<div class="footer">
+  <span class="block">Made with &hearts; using <a href="http://jekyllrb.com/">Jekyll</a> &amp; <a href="https://github.com/heiswayi/the-plain" title="The Plain theme by Heiswayi Nrird">The Plain</a></span>
+  <span class="block"><a href="https://github.com/qmemcpy" title="Hosted on GitHub" target="_blank">GitHub</a> &middot; <a href="https://twitter.com/qmemcpy" target="_blank">twitter</a> &middot; <a href="/about">about</a></span>
+  <span>
+  	feeds: <a href="/feed.xml" target="_blank">rss</a> &middot; <a href="/atom.xml" target="_blank">atom</a> &middot; <a href="/sitemap.xml" target="_blank">sitemap</a>
+  </span>
+  <span class="block">&copy; 2019 qmemcpy</span>
+</div>
+
+		<script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
+
+  ga('create', 'UA-99919043-1', 'auto');
+  ga('send', 'pageview');
+
+</script>
+
+
+	</body>
+
+</html>
