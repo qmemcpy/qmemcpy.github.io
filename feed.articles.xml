@@ -59,7 +59,7 @@
 
 &lt;h1 id=&quot;the-solution&quot;&gt;The solution&lt;/h1&gt;
 
-&lt;p&gt;Of course, the code is left as an exercise to the reader. However, the necessary steps can be very easily reproduced from this output:&lt;/p&gt;
+&lt;p&gt;My code is at the end of this post&lt;sup id=&quot;fnref:1&quot;&gt;&lt;a href=&quot;#fn:1&quot; class=&quot;footnote&quot;&gt;1&lt;/a&gt;&lt;/sup&gt;. However, the necessary steps can be very easily reproduced from this output:&lt;/p&gt;
 
 &lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;uaaaaaaaa: too big (958906890920433) # first char is 'u'? no - too big, try something that would make the hash smaller
 taaaaaaaa: too big (955394411466512) # 't' makes the hash smaller, but it is still too big
@@ -73,6 +73,14 @@ pruaaaaaa: too big (945937143922938)
 proaaaaaa: too small (945924315290893) # next one is 'o' - move on to the next
 ...
 &lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;div class=&quot;footnotes&quot;&gt;
+  &lt;ol&gt;
+    &lt;li id=&quot;fn:1&quot;&gt;
+      &lt;p&gt;&lt;a href=&quot;https://paste.sh/f9SQP2mc#BihKeyHuP2V_INUVWEWFZy3b&quot; target=&quot;_blank&quot;&gt;Click here for my solution&lt;/a&gt; &lt;a href=&quot;#fnref:1&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
+    &lt;/li&gt;
+  &lt;/ol&gt;
 &lt;/div&gt;
 </description>
 				
