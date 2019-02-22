@@ -77,7 +77,11 @@ proaaaaaa: too small (945924315290893) # next one is 'o' - move on to the next
 
 &lt;h2 id=&quot;update&quot;&gt;Update&lt;/h2&gt;
 
-&lt;p&gt;/r/hackcasual on reddit &lt;a href=&quot;https://www.reddit.com/r/programming/comments/at7gr8/cracking_a_weak_hash_function/egz9467&quot; target=&quot;_blank&quot;&gt;pointed out&lt;/a&gt; that you don’t even need to guess like this. That is, for the expression &lt;code class=&quot;highlighter-rouge&quot;&gt;a * 37 + x = b&lt;/code&gt;, you can solve for &lt;code class=&quot;highlighter-rouge&quot;&gt;x&lt;/code&gt; with modulus even though you only know &lt;code class=&quot;highlighter-rouge&quot;&gt;b&lt;/code&gt;. The reasoning, I quote, is:&lt;/p&gt;
+&lt;p&gt;/r/hackcasual on reddit &lt;a href=&quot;https://www.reddit.com/r/programming/comments/at7gr8/cracking_a_weak_hash_function/egz9467&quot; target=&quot;_blank&quot;&gt;pointed out&lt;/a&gt; that you don’t even need to guess like this. That is, for the expression:&lt;/p&gt;
+
+&lt;p&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;a * 37 + x = b&lt;/code&gt;&lt;/p&gt;
+
+&lt;p&gt;you can solve for &lt;code class=&quot;highlighter-rouge&quot;&gt;x&lt;/code&gt; with modulus even though you only know &lt;code class=&quot;highlighter-rouge&quot;&gt;b&lt;/code&gt;. The reasoning, I quote, is:&lt;/p&gt;
 
 &lt;blockquote&gt;
   &lt;p&gt;Let’s say I give you an expression a * 37 + x = b. Even though you only know b, you can solve for x with modulus. Think of it like this, let’s say I give you a * 10 + x = 74. As long as a and x are integers, you know x must be 4.&lt;/p&gt;

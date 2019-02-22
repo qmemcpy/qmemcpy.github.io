@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?><?xml-stylesheet type="text/xml" href="https://qmemcpy.io/feed.xslt.xml"?><feed xmlns="http://www.w3.org/2005/Atom"><generator uri="http://jekyllrb.com" version="3.4.0">Jekyll</generator><link href="https://qmemcpy.io/atom.xml" rel="self" type="application/atom+xml" /><link href="https://qmemcpy.io/" rel="alternate" type="text/html" /><updated>2019-02-22T18:33:51+01:00</updated><id>https://qmemcpy.io//</id><title type="html">qmemcpy - random bits of reverse engineering</title><subtitle>A blog focused on reverse engineering: malware, CTFs, Windows (kernel) and other random stuff I happen to be interested in.</subtitle><author><name>qmempcy</name></author><entry><title type="html">Cracking a weak hash function</title><link href="https://qmemcpy.io/post/cracking-a-weak-hash-function" rel="alternate" type="text/html" title="Cracking a weak hash function" /><published>2019-02-20T00:40:40+01:00</published><updated>2019-02-20T00:40:40+01:00</updated><id>https://qmemcpy.io/post/cracking-a-weak-hash-function</id><content type="html" xml:base="https://qmemcpy.io/post/cracking-a-weak-hash-function">&lt;h1 id=&quot;background&quot;&gt;Background&lt;/h1&gt;
+<?xml version="1.0" encoding="utf-8"?><?xml-stylesheet type="text/xml" href="https://qmemcpy.io/feed.xslt.xml"?><feed xmlns="http://www.w3.org/2005/Atom"><generator uri="http://jekyllrb.com" version="3.4.0">Jekyll</generator><link href="https://qmemcpy.io/atom.xml" rel="self" type="application/atom+xml" /><link href="https://qmemcpy.io/" rel="alternate" type="text/html" /><updated>2019-02-22T18:35:55+01:00</updated><id>https://qmemcpy.io//</id><title type="html">qmemcpy - random bits of reverse engineering</title><subtitle>A blog focused on reverse engineering: malware, CTFs, Windows (kernel) and other random stuff I happen to be interested in.</subtitle><author><name>qmempcy</name></author><entry><title type="html">Cracking a weak hash function</title><link href="https://qmemcpy.io/post/cracking-a-weak-hash-function" rel="alternate" type="text/html" title="Cracking a weak hash function" /><published>2019-02-20T00:40:40+01:00</published><updated>2019-02-20T00:40:40+01:00</updated><id>https://qmemcpy.io/post/cracking-a-weak-hash-function</id><content type="html" xml:base="https://qmemcpy.io/post/cracking-a-weak-hash-function">&lt;h1 id=&quot;background&quot;&gt;Background&lt;/h1&gt;
 
 &lt;p&gt;A few years ago, I found a job offer from a software company that required you to break a hash function in order to be able to apply. The hash function itself was pretty weak, and the constraints were sensible enough for the requirement to make sense. Since then, the company has taken the offer down, and as far as I know, they do not use the same exercise anymore, which is why I decided to post my solution.&lt;/p&gt;
 
@@ -65,7 +65,11 @@ proaaaaaa: too small (945924315290893) # next one is 'o' - move on to the next
 
 &lt;h2 id=&quot;update&quot;&gt;Update&lt;/h2&gt;
 
-&lt;p&gt;/r/hackcasual on reddit &lt;a href=&quot;https://www.reddit.com/r/programming/comments/at7gr8/cracking_a_weak_hash_function/egz9467&quot; target=&quot;_blank&quot;&gt;pointed out&lt;/a&gt; that you don’t even need to guess like this. That is, for the expression &lt;code class=&quot;highlighter-rouge&quot;&gt;a * 37 + x = b&lt;/code&gt;, you can solve for &lt;code class=&quot;highlighter-rouge&quot;&gt;x&lt;/code&gt; with modulus even though you only know &lt;code class=&quot;highlighter-rouge&quot;&gt;b&lt;/code&gt;. The reasoning, I quote, is:&lt;/p&gt;
+&lt;p&gt;/r/hackcasual on reddit &lt;a href=&quot;https://www.reddit.com/r/programming/comments/at7gr8/cracking_a_weak_hash_function/egz9467&quot; target=&quot;_blank&quot;&gt;pointed out&lt;/a&gt; that you don’t even need to guess like this. That is, for the expression:&lt;/p&gt;
+
+&lt;p&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;a * 37 + x = b&lt;/code&gt;&lt;/p&gt;
+
+&lt;p&gt;you can solve for &lt;code class=&quot;highlighter-rouge&quot;&gt;x&lt;/code&gt; with modulus even though you only know &lt;code class=&quot;highlighter-rouge&quot;&gt;b&lt;/code&gt;. The reasoning, I quote, is:&lt;/p&gt;
 
 &lt;blockquote&gt;
   &lt;p&gt;Let’s say I give you an expression a * 37 + x = b. Even though you only know b, you can solve for x with modulus. Think of it like this, let’s say I give you a * 10 + x = 74. As long as a and x are integers, you know x must be 4.&lt;/p&gt;
@@ -153,7 +157,11 @@ proaaaaaa: too small (945924315290893) # next one is 'o' - move on to the next
 
 Update
 
-/r/hackcasual on reddit pointed out that you don’t even need to guess like this. That is, for the expression a * 37 + x = b, you can solve for x with modulus even though you only know b. The reasoning, I quote, is:
+/r/hackcasual on reddit pointed out that you don’t even need to guess like this. That is, for the expression:
+
+a * 37 + x = b
+
+you can solve for x with modulus even though you only know b. The reasoning, I quote, is:
 
 
   Let’s say I give you an expression a * 37 + x = b. Even though you only know b, you can solve for x with modulus. Think of it like this, let’s say I give you a * 10 + x = 74. As long as a and x are integers, you know x must be 4.
